@@ -58,6 +58,11 @@ jobs:
             echo "爬取失败，未生成数据文件 / Crawling failed, no data file generated"
             exit 1
         fi
+
+        if [ ! -s "../data/${today}.jsonl" ]; then
+            echo "爬取结果为空，停止工作流以避免覆盖旧数据 / Crawl output is empty; stop workflow to avoid overwriting existing data"
+            exit 1
+        fi
         
         echo "crawl_date=$today" >> $GITHUB_OUTPUT
         echo "爬取完成 / Crawling completed"
@@ -119,6 +124,11 @@ jobs:
         # 检查AI处理是否成功 / Check if AI processing was successful
         if [ $? -ne 0 ]; then
             echo "AI处理失败 / AI processing failed"
+            exit 1
+        fi
+        AI_FILE="../data/${today}_AI_enhanced_${LANGUAGE}.jsonl"
+        if [ ! -s "$AI_FILE" ]; then
+            echo "AI增强文件为空，停止工作流以避免发布空页面 / AI enhanced file is empty; stop workflow to avoid publishing an empty page"
             exit 1
         fi
         echo "AI增强处理完成 / AI enhancement processing completed"

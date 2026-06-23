@@ -40,6 +40,9 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
         调用 spam.dw-dengwei.workers.dev 接口检测内容是否包含敏感词。
         返回 True 表示触发敏感词，False 表示未触发。
         """
+        if os.environ.get("ENABLE_SENSITIVE_FILTER", "false").lower() not in {"1", "true", "yes"}:
+            return False
+
         try:
             resp = requests.post(
                 "https://spam.dw-dengwei.workers.dev",
@@ -53,10 +56,10 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
             else:
                 # 如果接口异常，默认不触发敏感词
                 print(f"Sensitive check failed with status {resp.status_code}", file=sys.stderr)
-                return True
+                return False
         except Exception as e:
             print(f"Sensitive check error: {e}", file=sys.stderr)
-            return True
+            return False
 
     def check_github_code(content: str) -> Dict:
         """提取并验证 GitHub 链接"""
@@ -257,10 +260,19 @@ def main():
     )
     
     # 保存结果
-    with open(target_file, "w") as f:
+    written_count = 0
+    with open(target_file, "w", encoding="utf-8") as f:
         for item in processed_data:
             if item is not None:
-                f.write(json.dumps(item) + "\n")
+                f.write(json.dumps(item, ensure_ascii=False) + "\n")
+                written_count += 1
+
+    if data and written_count == 0:
+        raise RuntimeError(
+            f"AI enhancement produced 0 records from {len(data)} input records; refusing to write an empty dataset"
+        )
+
+    print(f"Wrote {written_count} AI-enhanced records to {target_file}", file=sys.stderr)
 
 if __name__ == "__main__":
     main()
