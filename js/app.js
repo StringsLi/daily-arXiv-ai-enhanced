@@ -19,6 +19,65 @@ let textSearchQuery = ''; // 实时文本搜索查询
 let previousActiveKeywords = null; // 文本搜索激活时，暂存之前的关键词激活集合
 let previousActiveAuthors = null; // 文本搜索激活时，暂存之前的作者激活集合
 
+const CATEGORY_GROUP_ORDER = [
+  '机器学习与数据科学',
+  '优化控制与系统工程',
+  '概率论与随机过程',
+  '动力系统与微分方程',
+  '数值计算与科学计算'
+];
+
+const CATEGORY_ALIASES = {
+  'cs.AI': '机器学习与数据科学',
+  'cs.CL': '机器学习与数据科学',
+  'cs.CV': '机器学习与数据科学',
+  'cs.LG': '机器学习与数据科学',
+  'cs.NE': '机器学习与数据科学',
+  'stat.ML': '机器学习与数据科学',
+  'stat.ME': '机器学习与数据科学',
+  'math.ST': '机器学习与数据科学',
+  'cs.SY': '优化控制与系统工程',
+  'eess.SY': '优化控制与系统工程',
+  'eess.SP': '优化控制与系统工程',
+  'math.OC': '优化控制与系统工程',
+  'math.PR': '概率论与随机过程',
+  'stat.TH': '概率论与随机过程',
+  'math.AP': '动力系统与微分方程',
+  'math.DS': '动力系统与微分方程',
+  'nlin.AO': '动力系统与微分方程',
+  'nlin.CD': '动力系统与微分方程',
+  'nlin.SI': '动力系统与微分方程',
+  'cs.CE': '数值计算与科学计算',
+  'cs.MS': '数值计算与科学计算',
+  'cs.NA': '数值计算与科学计算',
+  'math.NA': '数值计算与科学计算',
+  'physics.comp-ph': '数值计算与科学计算'
+};
+
+function firstText(...values) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
+function normalizeCategory(categories) {
+  const list = Array.isArray(categories) ? categories : [categories];
+  for (const category of list) {
+    if (!category) continue;
+    const value = String(category).trim();
+    if (CATEGORY_GROUP_ORDER.includes(value)) {
+      return value;
+    }
+    if (CATEGORY_ALIASES[value]) {
+      return CATEGORY_ALIASES[value];
+    }
+  }
+  return CATEGORY_GROUP_ORDER[CATEGORY_GROUP_ORDER.length - 1];
+}
+
 // 加载用户的关键词设置
 function loadUserKeywords() {
   const savedKeywords = localStorage.getItem('preferredKeywords');
@@ -255,7 +314,7 @@ function outputJsonData(papers, category) {
       id: p.id,
       title: p.title,
       authors: p.authors,
-      categories: p.category,
+      categories: p.allCategories || (Array.isArray(p.category) ? p.category : [p.category]),
       summary: p.summary,
       date: p.date,
       url: p.url,
@@ -274,15 +333,16 @@ function outputJsonData(papers, category) {
 // 根据category获取论文（复用现有逻辑）
 function getPapersByCategory(paperData, category) {
   let papers = [];
-  if (category === 'all') {
+  const normalizedCategory = category === 'all' ? 'all' : normalizeCategory(category);
+  if (normalizedCategory === 'all') {
     const { sortedCategories } = getAllCategories(paperData);
     sortedCategories.forEach(cat => {
       if (paperData[cat]) {
         papers = papers.concat(paperData[cat]);
       }
     });
-  } else if (paperData[category]) {
-    papers = paperData[category];
+  } else if (paperData[normalizedCategory]) {
+    papers = paperData[normalizedCategory];
   }
   return papers;
 }
@@ -907,29 +967,35 @@ function parseJsonlData(jsonlText, date) {
         return;
       }
       
-      let allCategories = Array.isArray(paper.categories) ? paper.categories : [paper.categories];
-      
-      const primaryCategory = allCategories[0];
+      const rawCategories = Array.isArray(paper.raw_categories)
+        ? paper.raw_categories
+        : (Array.isArray(paper.categories) ? paper.categories : [paper.categories]);
+      const primaryCategory = normalizeCategory(paper.categories || rawCategories);
       
       if (!result[primaryCategory]) {
         result[primaryCategory] = [];
       }
       
-      const summary = paper.AI && paper.AI.tldr ? paper.AI.tldr : paper.summary;
+      const aiData = paper.AI && typeof paper.AI === 'object' ? paper.AI : {};
+      const translatedSummary = firstText(aiData.translated_summary, paper.translated_summary, paper.summary);
+      const tldr = firstText(aiData.tldr, translatedSummary, paper.summary);
       
       result[primaryCategory].push({
         title: paper.title,
         url: paper.abs || paper.pdf || `https://arxiv.org/abs/${paper.id}`,
         authors: Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors,
-        category: allCategories,
-        summary: summary,
-        details: paper.summary || '',
+        category: primaryCategory,
+        allCategories: [primaryCategory],
+        rawCategories: rawCategories.filter(Boolean),
+        summary: tldr,
+        details: translatedSummary,
+        originalSummary: paper.summary || '',
         date: date,
         id: paper.id,
-        motivation: paper.AI && paper.AI.motivation ? paper.AI.motivation : '',
-        method: paper.AI && paper.AI.method ? paper.AI.method : '',
-        result: paper.AI && paper.AI.result ? paper.AI.result : '',
-        conclusion: paper.AI && paper.AI.conclusion ? paper.AI.conclusion : '',
+        motivation: firstText(aiData.motivation),
+        method: firstText(aiData.method),
+        result: firstText(aiData.result),
+        conclusion: firstText(aiData.conclusion),
         code_url: paper.code_url || '',
         code_stars: paper.code_stars || 0,
         code_last_update: paper.code_last_update || ''
@@ -953,6 +1019,12 @@ function getAllCategories(data) {
   
   return {
     sortedCategories: categories.sort((a, b) => {
+      const indexA = CATEGORY_GROUP_ORDER.indexOf(a);
+      const indexB = CATEGORY_GROUP_ORDER.indexOf(b);
+      if (indexA !== -1 || indexB !== -1) {
+        return (indexA === -1 ? CATEGORY_GROUP_ORDER.length : indexA) -
+          (indexB === -1 ? CATEGORY_GROUP_ORDER.length : indexB);
+      }
       return a.localeCompare(b);
     }),
     categoryCounts: catePaperCount
@@ -991,22 +1063,22 @@ function renderCategoryFilter(categories) {
 }
 
 function filterByCategory(category) {
-  currentCategory = category;
+  currentCategory = category === 'all' ? 'all' : normalizeCategory(category);
 
   // 如果不是JSON模式，才更新URL参数
   if (!isJsonMode()) {
     const url = new URL(window.location);
-    if (category === 'all') {
+    if (currentCategory === 'all') {
       url.searchParams.delete('category');
     } else {
-      url.searchParams.set('category', category);
+      url.searchParams.set('category', currentCategory);
     }
     // 使用replaceState更新URL，不刷新页面
     window.history.replaceState({}, '', url);
   }
 
   document.querySelectorAll('.category-button').forEach(button => {
-    button.classList.toggle('active', button.dataset.category === category);
+    button.classList.toggle('active', button.dataset.category === currentCategory);
   });
 
   // 保持当前激活的过滤标签

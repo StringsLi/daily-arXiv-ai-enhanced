@@ -5,6 +5,65 @@ let flatpickrInstance = null;
 let isRangeMode = false;
 let allPapersData = [];
 
+const CATEGORY_GROUP_ORDER = [
+  '机器学习与数据科学',
+  '优化控制与系统工程',
+  '概率论与随机过程',
+  '动力系统与微分方程',
+  '数值计算与科学计算'
+];
+
+const CATEGORY_ALIASES = {
+  'cs.AI': '机器学习与数据科学',
+  'cs.CL': '机器学习与数据科学',
+  'cs.CV': '机器学习与数据科学',
+  'cs.LG': '机器学习与数据科学',
+  'cs.NE': '机器学习与数据科学',
+  'stat.ML': '机器学习与数据科学',
+  'stat.ME': '机器学习与数据科学',
+  'math.ST': '机器学习与数据科学',
+  'cs.SY': '优化控制与系统工程',
+  'eess.SY': '优化控制与系统工程',
+  'eess.SP': '优化控制与系统工程',
+  'math.OC': '优化控制与系统工程',
+  'math.PR': '概率论与随机过程',
+  'stat.TH': '概率论与随机过程',
+  'math.AP': '动力系统与微分方程',
+  'math.DS': '动力系统与微分方程',
+  'nlin.AO': '动力系统与微分方程',
+  'nlin.CD': '动力系统与微分方程',
+  'nlin.SI': '动力系统与微分方程',
+  'cs.CE': '数值计算与科学计算',
+  'cs.MS': '数值计算与科学计算',
+  'cs.NA': '数值计算与科学计算',
+  'math.NA': '数值计算与科学计算',
+  'physics.comp-ph': '数值计算与科学计算'
+};
+
+function firstText(...values) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
+function normalizeCategory(categories) {
+  const list = Array.isArray(categories) ? categories : [categories];
+  for (const category of list) {
+    if (!category) continue;
+    const value = String(category).trim();
+    if (CATEGORY_GROUP_ORDER.includes(value)) {
+      return value;
+    }
+    if (CATEGORY_ALIASES[value]) {
+      return CATEGORY_ALIASES[value];
+    }
+  }
+  return CATEGORY_GROUP_ORDER[CATEGORY_GROUP_ORDER.length - 1];
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Check screen size
   const checkScreenSize = () => {
@@ -727,29 +786,34 @@ function parseJsonlData(jsonlText, date) {
         return;
       }
       
-      let allCategories = Array.isArray(paper.categories) ? paper.categories : [paper.categories];
-      
-      const primaryCategory = allCategories[0];
+      const rawCategories = Array.isArray(paper.raw_categories)
+        ? paper.raw_categories
+        : (Array.isArray(paper.categories) ? paper.categories : [paper.categories]);
+      const primaryCategory = normalizeCategory(paper.categories || rawCategories);
       
       if (!result[primaryCategory]) {
         result[primaryCategory] = [];
       }
       
-      const summary = paper.AI && paper.AI.tldr ? paper.AI.tldr : paper.summary;
+      const aiData = paper.AI && typeof paper.AI === 'object' ? paper.AI : {};
+      const translatedSummary = firstText(aiData.translated_summary, paper.translated_summary, paper.summary);
+      const tldr = firstText(aiData.tldr, translatedSummary, paper.summary);
       
       result[primaryCategory].push({
         title: paper.title,
         url: paper.abs || paper.pdf || `https://arxiv.org/abs/${paper.id}`,
         authors: Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors,
-        category: allCategories,
-        summary: summary,
-        details: paper.summary || '',
+        category: [primaryCategory],
+        rawCategories: rawCategories.filter(Boolean),
+        summary: tldr,
+        details: translatedSummary,
+        originalSummary: paper.summary || '',
         date: date,
         id: paper.id,
-        motivation: paper.AI && paper.AI.motivation ? paper.AI.motivation : '',
-        method: paper.AI && paper.AI.method ? paper.AI.method : '',
-        result: paper.AI && paper.AI.result ? paper.AI.result : '',
-        conclusion: paper.AI && paper.AI.conclusion ? paper.AI.conclusion : ''
+        motivation: firstText(aiData.motivation),
+        method: firstText(aiData.method),
+        result: firstText(aiData.result),
+        conclusion: firstText(aiData.conclusion)
       });
     } catch (error) {
       console.error('解析JSON行失败:', error, line);

@@ -1,4 +1,6 @@
-Please analyze the following abstract of papers. 
+Please analyze the following paper abstract.
+
+Return all fields in {language}. The translated_summary field must be a faithful full translation of the original abstract, not a short summary. Keep tldr concise and make motivation, method, result, and conclusion informative enough for a researcher to scan quickly.
 
 Content:
 {content}

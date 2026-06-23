@@ -117,11 +117,12 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
     """处理单个数据项"""
     # Default structure with meaningful fallback values
     default_ai_fields = {
-        "tldr": "Summary generation failed",
-        "motivation": "Motivation analysis unavailable",
-        "method": "Method extraction failed",
-        "result": "Result analysis unavailable",
-        "conclusion": "Conclusion extraction failed"
+        "tldr": item.get("summary", ""),
+        "translated_summary": item.get("summary", ""),
+        "motivation": "",
+        "method": "",
+        "result": "",
+        "conclusion": ""
     }
     
     try:
@@ -201,11 +202,12 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
                 # Add default AI fields to ensure consistency
                 processed_data[idx] = data[idx]
                 processed_data[idx]['AI'] = {
-                    "tldr": "Processing failed",
-                    "motivation": "Processing failed",
-                    "method": "Processing failed",
-                    "result": "Processing failed",
-                    "conclusion": "Processing failed"
+                    "tldr": data[idx].get("summary", ""),
+                    "translated_summary": data[idx].get("summary", ""),
+                    "motivation": "",
+                    "method": "",
+                    "result": "",
+                    "conclusion": ""
                 }
     
     return processed_data

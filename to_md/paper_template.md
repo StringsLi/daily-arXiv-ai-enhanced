@@ -16,6 +16,8 @@ Result: {result}
 
 Conclusion: {conclusion}
 
-Abstract: {summary}
+中文摘要: {translated_summary}
+
+Original Abstract: {summary}
 
 </details>

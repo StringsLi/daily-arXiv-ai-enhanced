@@ -10,6 +10,7 @@ import json
 import os
 import sys
 from datetime import datetime, timedelta
+from daily_arxiv.category_groups import classify_paper
 
 
 class DailyArxivPipeline:
@@ -26,7 +27,10 @@ class DailyArxivPipeline:
         paper = next(self.client.results(search))
         item["authors"] = [a.name for a in paper.authors]
         item["title"] = paper.title
-        item["categories"] = paper.categories
         item["comment"] = paper.comment
         item["summary"] = paper.summary
+        item["raw_categories"] = paper.categories
+        item["categories"] = [
+            classify_paper(paper.categories, paper.title, paper.summary)
+        ]
         return item
