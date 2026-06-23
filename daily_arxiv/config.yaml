@@ -1,7 +1,10 @@
 arxiv:
-  categories:  # 文章类型
-    - cs.CV
-    - cs.CL
+  categories:
+    - math.DS
+    - cs.LG
+    - stat.ML
+    - math.PR
+    - cs.AI
 
 llm:
-  model_name: 'deepseek-chat'  # 使用的LLM模型
+  model_name: 'glm-5.2'
