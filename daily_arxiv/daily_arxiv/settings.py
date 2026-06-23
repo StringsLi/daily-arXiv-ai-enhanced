@@ -22,6 +22,11 @@ ROBOTSTXT_OBEY = True
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 # CONCURRENT_REQUESTS = 32
 
+# Keep external journal endpoints from holding the daily workflow open forever.
+DOWNLOAD_TIMEOUT = 30
+RETRY_TIMES = 1
+CLOSESPIDER_TIMEOUT = 600
+
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
