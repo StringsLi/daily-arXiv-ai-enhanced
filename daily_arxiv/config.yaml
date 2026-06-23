@@ -1,10 +1,11 @@
 arxiv:
   categories:
     - math.DS
-    - cs.LG
-    - stat.ML
     - math.PR
-    - cs.AI
+    - math.OC
+    - math.NA
+    - math.AP
+    - cs.SY
 
 llm:
   model_name: 'glm-5.2'
