@@ -109,10 +109,14 @@ if __name__ == "__main__":
                         translated_summary=first_text(ai_data.get('translated_summary'), item.get('summary')),
                         url=item['abs'],
                         tldr=first_text(ai_data.get('tldr'), ai_data.get('translated_summary'), item.get('summary')),
+                        research_problem=first_text(ai_data.get('research_problem')),
+                        key_innovation=first_text(ai_data.get('key_innovation')),
                         motivation=first_text(ai_data.get('motivation')),
                         method=first_text(ai_data.get('method')),
+                        experiments=first_text(ai_data.get('experiments')),
                         result=first_text(ai_data.get('result')),
                         conclusion=first_text(ai_data.get('conclusion')),
+                        limitations=first_text(ai_data.get('limitations')),
                         cate=item['display_category'],
                         idx=next(idx)
                     )

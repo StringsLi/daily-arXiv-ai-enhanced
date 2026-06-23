@@ -798,6 +798,8 @@ function parseJsonlData(jsonlText, date) {
       const aiData = paper.AI && typeof paper.AI === 'object' ? paper.AI : {};
       const translatedSummary = firstText(aiData.translated_summary, paper.translated_summary, paper.summary);
       const tldr = firstText(aiData.tldr, translatedSummary, paper.summary);
+      const researchProblem = firstText(aiData.research_problem, aiData.motivation);
+      const keyInnovation = firstText(aiData.key_innovation, aiData.conclusion);
       
       result[primaryCategory].push({
         title: paper.title,
@@ -810,10 +812,15 @@ function parseJsonlData(jsonlText, date) {
         originalSummary: paper.summary || '',
         date: date,
         id: paper.id,
+        comment: paper.comment || '',
+        researchProblem: researchProblem,
+        keyInnovation: keyInnovation,
         motivation: firstText(aiData.motivation),
         method: firstText(aiData.method),
+        experiments: firstText(aiData.experiments),
         result: firstText(aiData.result),
-        conclusion: firstText(aiData.conclusion)
+        conclusion: firstText(aiData.conclusion),
+        limitations: firstText(aiData.limitations)
       });
     } catch (error) {
       console.error('解析JSON行失败:', error, line);

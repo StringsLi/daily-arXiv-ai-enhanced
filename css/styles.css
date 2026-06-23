@@ -651,6 +651,24 @@ main {
   overflow: visible;
 }
 
+.paper-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.paper-card-meta span {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background-color: var(--background-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 2px 7px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 /* 作者列表项样式 */
 .paper-card-authors .author-item {
   display: inline;
@@ -702,6 +720,68 @@ main {
   border-radius: 6px;
 }
 
+.paper-card-summary p {
+  margin: 4px 0 0;
+}
+
+.paper-card-section-label {
+  display: block;
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 4px;
+}
+
+.paper-card-insights {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.paper-card-insight {
+  border-top: 1px solid var(--border-color);
+  padding-top: 10px;
+}
+
+.paper-card-insight-label {
+  display: block;
+  color: var(--text-color);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.paper-card-insight p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.paper-card-code {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border: 1px solid var(--border-accent);
+  border-radius: 12px;
+  padding: 2px 8px;
+}
+
+.paper-card-code:hover {
+  color: var(--primary-color);
+  background-color: rgba(102, 126, 234, 0.08);
+}
+
 .paper-card-footer {
   margin-top: auto;
   display: flex;
@@ -723,7 +803,7 @@ main {
 /* 论文卡片 - 列表视图 */
 .list-view .paper-card {
   flex-direction: row;
-  align-items: center;
+  align-items: stretch;
   padding: 16px;
   gap: 20px;
 }
@@ -737,6 +817,10 @@ main {
 .list-view .paper-card-body {
   padding: 0;
   flex: 2;
+}
+
+.list-view .paper-card-insights {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .list-view .paper-card-footer {
@@ -1400,6 +1484,48 @@ footer {
   font-size: 16px;
 }
 
+.paper-detail-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 16px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.paper-detail-meta p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.paper-detail-summary {
+  margin: 18px 0;
+}
+
+.paper-detail-summary h3 {
+  margin-bottom: 8px;
+}
+
+.translated-abstract {
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.original-abstract-block {
+  margin: 18px 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 0;
+}
+
+.original-abstract-block summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
 .original-abstract {
   font-style: italic;
   border-left: 3px solid var(--border-color);
@@ -1616,6 +1742,18 @@ footer {
 }
 
 @media (max-width: 768px) {
+  .list-view .paper-card {
+    flex-direction: column;
+  }
+
+  .list-view .paper-card-insights {
+    grid-template-columns: 1fr;
+  }
+
+  .paper-detail-meta {
+    grid-template-columns: 1fr;
+  }
+
   .settings-item {
     flex-direction: column;
     align-items: flex-start;

@@ -119,10 +119,14 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
     default_ai_fields = {
         "tldr": item.get("summary", ""),
         "translated_summary": item.get("summary", ""),
+        "research_problem": "",
+        "key_innovation": "",
         "motivation": "",
         "method": "",
+        "experiments": "",
         "result": "",
-        "conclusion": ""
+        "conclusion": "",
+        "limitations": ""
     }
     
     try:
@@ -204,10 +208,14 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
                 processed_data[idx]['AI'] = {
                     "tldr": data[idx].get("summary", ""),
                     "translated_summary": data[idx].get("summary", ""),
+                    "research_problem": "",
+                    "key_innovation": "",
                     "motivation": "",
                     "method": "",
+                    "experiments": "",
                     "result": "",
-                    "conclusion": ""
+                    "conclusion": "",
+                    "limitations": ""
                 }
     
     return processed_data

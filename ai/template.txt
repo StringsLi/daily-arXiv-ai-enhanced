@@ -1,6 +1,14 @@
 Please analyze the following paper abstract.
 
-Return all fields in {language}. The translated_summary field must be a faithful full translation of the original abstract, not a short summary. Keep tldr concise and make motivation, method, result, and conclusion informative enough for a researcher to scan quickly.
+Return all fields in {language}.
+
+Field requirements:
+- translated_summary: a faithful full translation of the original abstract, not a short summary.
+- tldr: one concise sentence with the paper's core takeaway.
+- research_problem: the concrete problem or gap the paper addresses.
+- key_innovation: the main new idea, contribution, or technical novelty.
+- motivation, method, experiments, result, conclusion: concise but informative enough for a researcher to scan quickly.
+- limitations: limitations or open questions if stated or clearly implied by the abstract; otherwise return an empty string.
 
 Content:
 {content}

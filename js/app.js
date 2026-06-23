@@ -316,6 +316,13 @@ function outputJsonData(papers, category) {
       authors: p.authors,
       categories: p.allCategories || (Array.isArray(p.category) ? p.category : [p.category]),
       summary: p.summary,
+      translated_summary: p.details,
+      research_problem: p.researchProblem,
+      key_innovation: p.keyInnovation,
+      method: p.method,
+      experiments: p.experiments,
+      result: p.result,
+      conclusion: p.conclusion,
       date: p.date,
       url: p.url,
       reason: p.matchReason
@@ -979,6 +986,8 @@ function parseJsonlData(jsonlText, date) {
       const aiData = paper.AI && typeof paper.AI === 'object' ? paper.AI : {};
       const translatedSummary = firstText(aiData.translated_summary, paper.translated_summary, paper.summary);
       const tldr = firstText(aiData.tldr, translatedSummary, paper.summary);
+      const researchProblem = firstText(aiData.research_problem, aiData.motivation);
+      const keyInnovation = firstText(aiData.key_innovation, aiData.conclusion);
       
       result[primaryCategory].push({
         title: paper.title,
@@ -992,10 +1001,15 @@ function parseJsonlData(jsonlText, date) {
         originalSummary: paper.summary || '',
         date: date,
         id: paper.id,
+        comment: paper.comment || '',
+        researchProblem: researchProblem,
+        keyInnovation: keyInnovation,
         motivation: firstText(aiData.motivation),
         method: firstText(aiData.method),
+        experiments: firstText(aiData.experiments),
         result: firstText(aiData.result),
         conclusion: firstText(aiData.conclusion),
+        limitations: firstText(aiData.limitations),
         code_url: paper.code_url || '',
         code_stars: paper.code_stars || 0,
         code_last_update: paper.code_last_update || ''
@@ -1204,10 +1218,14 @@ function renderPapers() {
         Array.isArray(a.category) ? a.category.join(', ') : a.category,
         a.summary,
         a.details || '',
+        a.researchProblem || '',
+        a.keyInnovation || '',
         a.motivation || '',
         a.method || '',
+        a.experiments || '',
         a.result || '',
-        a.conclusion || ''
+        a.conclusion || '',
+        a.limitations || ''
       ].join(' ').toLowerCase();
       const hayB = [
         b.title,
@@ -1215,10 +1233,14 @@ function renderPapers() {
         Array.isArray(b.category) ? b.category.join(', ') : b.category,
         b.summary,
         b.details || '',
+        b.researchProblem || '',
+        b.keyInnovation || '',
         b.motivation || '',
         b.method || '',
+        b.experiments || '',
         b.result || '',
-        b.conclusion || ''
+        b.conclusion || '',
+        b.limitations || ''
       ].join(' ').toLowerCase();
       const am = hayA.includes(q);
       const bm = hayB.includes(q);
@@ -1235,10 +1257,14 @@ function renderPapers() {
         Array.isArray(p.category) ? p.category.join(', ') : p.category,
         p.summary,
         p.details || '',
+        p.researchProblem || '',
+        p.keyInnovation || '',
         p.motivation || '',
         p.method || '',
+        p.experiments || '',
         p.result || '',
-        p.conclusion || ''
+        p.conclusion || '',
+        p.limitations || ''
       ].join(' ').toLowerCase();
       const matched = hay.includes(q);
       p.isMatched = matched;
@@ -1445,6 +1471,18 @@ function renderPapers() {
     const highlightedSummary = titleSummaryTerms.length > 0 
       ? highlightMatches(paper.summary, titleSummaryTerms, 'keyword-highlight') 
       : paper.summary;
+    const highlightedProblem = titleSummaryTerms.length > 0 
+      ? highlightMatches(paper.researchProblem, titleSummaryTerms, 'keyword-highlight') 
+      : paper.researchProblem;
+    const highlightedInnovation = titleSummaryTerms.length > 0 
+      ? highlightMatches(paper.keyInnovation, titleSummaryTerms, 'keyword-highlight') 
+      : paper.keyInnovation;
+    const highlightedMethodPreview = titleSummaryTerms.length > 0 
+      ? highlightMatches(paper.method, titleSummaryTerms, 'keyword-highlight') 
+      : paper.method;
+    const highlightedResultPreview = titleSummaryTerms.length > 0 
+      ? highlightMatches(paper.result, titleSummaryTerms, 'keyword-highlight') 
+      : paper.result;
 
     // 高亮作者（作者过滤 + 文本搜索）
     const authorTerms = [];
@@ -1453,6 +1491,23 @@ function renderPapers() {
     
     // 格式化作者列表（应用截断规则和高亮）
     const formattedAuthors = formatAuthorsForCard(paper.authors, authorTerms);
+    const cardInsights = [
+      ['研究问题', highlightedProblem],
+      ['关键创新', highlightedInnovation],
+      ['方法', highlightedMethodPreview],
+      ['结果', highlightedResultPreview]
+    ].filter(([, value]) => value && String(value).trim().length > 0);
+    const cardInsightsHtml = cardInsights.length > 0
+      ? `<div class="paper-card-insights">${cardInsights.map(([label, value]) => `
+          <div class="paper-card-insight">
+            <span class="paper-card-insight-label">${label}</span>
+            <p>${value}</p>
+          </div>
+        `).join('')}</div>`
+      : '';
+    const codeMeta = paper.code_url
+      ? `<a class="paper-card-code" href="${paper.code_url}" target="_blank" onclick="event.stopPropagation()">Code${paper.code_stars ? ` · ${paper.code_stars} stars` : ''}</a>`
+      : '';
     
     // 构建 GitHub 按钮 HTML
     // let githubHtml = '';
@@ -1477,17 +1532,29 @@ function renderPapers() {
       <div class="paper-card-header">
         <h3 class="paper-card-title">${highlightedTitle}</h3>
         <p class="paper-card-authors">${formattedAuthors}</p>
+        <div class="paper-card-meta">
+          <span>${formatDate(paper.date)}</span>
+          ${paper.id ? `<span>${paper.id}</span>` : ''}
+          ${paper.comment ? `<span>${paper.comment}</span>` : ''}
+        </div>
         <div class="paper-card-categories">
           ${categoryTags}
         </div>
       </div>
       <div class="paper-card-body">
-        <p class="paper-card-summary">${highlightedSummary}</p>
+        <div class="paper-card-summary">
+          <span class="paper-card-section-label">一句话结论</span>
+          <p>${highlightedSummary}</p>
+        </div>
+        ${cardInsightsHtml}
         <div class="paper-card-footer">
           <div class="footer-left">
-            <span class="paper-card-date">${formatDate(paper.date)}</span>
+            <span class="paper-card-date">${paper.rawCategories && paper.rawCategories.length ? paper.rawCategories.join(', ') : ''}</span>
           </div>
-          <span class="paper-card-link">Details</span>
+          <div class="footer-actions">
+            ${codeMeta}
+            <span class="paper-card-link">Details</span>
+          </div>
         </div>
       </div>
     `;
@@ -1564,31 +1631,70 @@ function showPaperDetails(paper, paperIndex) {
   const highlightedConclusion = paper.conclusion && modalTitleTerms.length > 0 
     ? highlightMatches(paper.conclusion, modalTitleTerms, 'keyword-highlight') 
     : paper.conclusion;
+  const highlightedProblem = paper.researchProblem && modalTitleTerms.length > 0 
+    ? highlightMatches(paper.researchProblem, modalTitleTerms, 'keyword-highlight') 
+    : paper.researchProblem;
+  const highlightedInnovation = paper.keyInnovation && modalTitleTerms.length > 0 
+    ? highlightMatches(paper.keyInnovation, modalTitleTerms, 'keyword-highlight') 
+    : paper.keyInnovation;
+  const highlightedExperiments = paper.experiments && modalTitleTerms.length > 0 
+    ? highlightMatches(paper.experiments, modalTitleTerms, 'keyword-highlight') 
+    : paper.experiments;
+  const highlightedLimitations = paper.limitations && modalTitleTerms.length > 0 
+    ? highlightMatches(paper.limitations, modalTitleTerms, 'keyword-highlight') 
+    : paper.limitations;
+  const highlightedOriginalAbstract = paper.originalSummary && modalTitleTerms.length > 0 
+    ? highlightMatches(paper.originalSummary, modalTitleTerms, 'keyword-highlight') 
+    : paper.originalSummary;
   
   // 判断是否需要显示高亮说明
   const showHighlightLegend = activeKeywords.length > 0 || activeAuthors.length > 0;
   
   // 添加匹配标记
   const matchedPaperClass = paper.isMatched ? 'matched-paper-details' : '';
+  const analysisSections = [
+    ['研究问题', highlightedProblem],
+    ['关键创新', highlightedInnovation],
+    ['研究动机', highlightedMotivation],
+    ['方法', highlightedMethod],
+    ['实验 / 验证', highlightedExperiments],
+    ['主要结果', highlightedResult],
+    ['结论', highlightedConclusion],
+    ['局限 / 后续问题', highlightedLimitations]
+  ].filter(([, value]) => value && String(value).trim().length > 0);
+  const analysisHtml = analysisSections.length > 0
+    ? `<div class="paper-sections rich-paper-sections">${analysisSections.map(([label, value]) => `
+        <div class="paper-section">
+          <h4>${label}</h4>
+          <p>${value}</p>
+        </div>
+      `).join('')}</div>`
+    : '';
+  const codeInfoHtml = paper.code_url
+    ? `<p><strong>Code: </strong><a href="${paper.code_url}" target="_blank">${paper.code_url}</a>${paper.code_stars ? ` · ${paper.code_stars} stars` : ''}${paper.code_last_update ? ` · updated ${paper.code_last_update}` : ''}</p>`
+    : '';
   
   const modalContent = `
     <div class="paper-details ${matchedPaperClass}">
-      <p><strong>Authors: </strong>${highlightedAuthors}</p>
-      <p><strong>Categories: </strong>${categoryDisplay}</p>
-      <p><strong>Date: </strong>${formatDate(paper.date)}</p>
-      
-      
-      <h3>TL;DR</h3>
-      <p>${highlightedSummary}</p>
-      
-      <div class="paper-sections">
-        ${paper.motivation ? `<div class="paper-section"><h4>Motivation</h4><p>${highlightedMotivation}</p></div>` : ''}
-        ${paper.method ? `<div class="paper-section"><h4>Method</h4><p>${highlightedMethod}</p></div>` : ''}
-        ${paper.result ? `<div class="paper-section"><h4>Result</h4><p>${highlightedResult}</p></div>` : ''}
-        ${paper.conclusion ? `<div class="paper-section"><h4>Conclusion</h4><p>${highlightedConclusion}</p></div>` : ''}
+      <div class="paper-detail-meta">
+        <p><strong>Authors: </strong>${highlightedAuthors}</p>
+        <p><strong>Category: </strong>${categoryDisplay}</p>
+        <p><strong>arXiv ID: </strong>${paper.id || ''}</p>
+        <p><strong>Date: </strong>${formatDate(paper.date)}</p>
+        ${paper.rawCategories && paper.rawCategories.length ? `<p><strong>Original arXiv categories: </strong>${paper.rawCategories.join(', ')}</p>` : ''}
+        ${paper.comment ? `<p><strong>Comment: </strong>${paper.comment}</p>` : ''}
+        ${codeInfoHtml}
       </div>
+
+      <section class="paper-detail-summary">
+        <h3>一句话结论</h3>
+        <p>${highlightedSummary}</p>
+      </section>
+
+      ${analysisHtml}
       
-      ${highlightedAbstract ? `<h3>Abstract</h3><p class="original-abstract">${highlightedAbstract}</p>` : ''}
+      ${highlightedAbstract ? `<section class="paper-detail-summary"><h3>中文摘要</h3><p class="translated-abstract">${highlightedAbstract}</p></section>` : ''}
+      ${highlightedOriginalAbstract ? `<details class="original-abstract-block"><summary>Original Abstract</summary><p class="original-abstract">${highlightedOriginalAbstract}</p></details>` : ''}
       
       <div class="pdf-preview-section">
         <div class="pdf-header">
