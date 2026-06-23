@@ -323,6 +323,10 @@ function outputJsonData(papers, category) {
       experiments: p.experiments,
       result: p.result,
       conclusion: p.conclusion,
+      source: p.source,
+      journal: p.journal,
+      doi: p.doi,
+      free_fulltext_sources: p.freeFulltextSources,
       date: p.date,
       url: p.url,
       reason: p.matchReason
@@ -1001,6 +1005,13 @@ function parseJsonlData(jsonlText, date) {
         originalSummary: paper.summary || '',
         date: date,
         id: paper.id,
+        source: paper.source || '',
+        sourceType: paper.source_type || '',
+        journal: paper.journal || '',
+        doi: paper.doi || '',
+        sourceUrl: paper.source_url || '',
+        arxivId: paper.arxiv_id || '',
+        freeFulltextSources: Array.isArray(paper.free_fulltext_sources) ? paper.free_fulltext_sources : [],
         comment: paper.comment || '',
         researchProblem: researchProblem,
         keyInnovation: keyInnovation,
@@ -1508,6 +1519,12 @@ function renderPapers() {
     const codeMeta = paper.code_url
       ? `<a class="paper-card-code" href="${paper.code_url}" target="_blank" onclick="event.stopPropagation()">Code${paper.code_stars ? ` · ${paper.code_stars} stars` : ''}</a>`
       : '';
+    const fulltextLink = paper.freeFulltextSources && paper.freeFulltextSources.length
+      ? paper.freeFulltextSources.find(source => ['pdf', 'fulltext', 'abstract'].includes(source.kind)) || paper.freeFulltextSources[0]
+      : null;
+    const fulltextMeta = fulltextLink
+      ? `<a class="paper-card-code" href="${fulltextLink.url}" target="_blank" onclick="event.stopPropagation()">全文 · ${fulltextLink.provider}</a>`
+      : '';
     
     // 构建 GitHub 按钮 HTML
     // let githubHtml = '';
@@ -1535,6 +1552,7 @@ function renderPapers() {
         <div class="paper-card-meta">
           <span>${formatDate(paper.date)}</span>
           ${paper.id ? `<span>${paper.id}</span>` : ''}
+          ${paper.journal ? `<span>${paper.journal}</span>` : ''}
           ${paper.comment ? `<span>${paper.comment}</span>` : ''}
         </div>
         <div class="paper-card-categories">
@@ -1552,6 +1570,7 @@ function renderPapers() {
             <span class="paper-card-date">${paper.rawCategories && paper.rawCategories.length ? paper.rawCategories.join(', ') : ''}</span>
           </div>
           <div class="footer-actions">
+            ${fulltextMeta}
             ${codeMeta}
             <span class="paper-card-link">Details</span>
           </div>
@@ -1673,18 +1692,31 @@ function showPaperDetails(paper, paperIndex) {
   const codeInfoHtml = paper.code_url
     ? `<p><strong>Code: </strong><a href="${paper.code_url}" target="_blank">${paper.code_url}</a>${paper.code_stars ? ` · ${paper.code_stars} stars` : ''}${paper.code_last_update ? ` · updated ${paper.code_last_update}` : ''}</p>`
     : '';
+  const fulltextSourcesHtml = paper.freeFulltextSources && paper.freeFulltextSources.length
+    ? `<div class="fulltext-source-list">
+        ${paper.freeFulltextSources.map(source => `
+          <a href="${source.url}" target="_blank" class="fulltext-source-link">
+            ${source.provider} · ${source.kind}
+          </a>
+        `).join('')}
+      </div>`
+    : '';
   
   const modalContent = `
     <div class="paper-details ${matchedPaperClass}">
       <div class="paper-detail-meta">
         <p><strong>Authors: </strong>${highlightedAuthors}</p>
         <p><strong>Category: </strong>${categoryDisplay}</p>
+        ${paper.journal ? `<p><strong>Journal: </strong>${paper.journal}</p>` : ''}
+        ${paper.doi ? `<p><strong>DOI: </strong><a href="https://doi.org/${paper.doi}" target="_blank">${paper.doi}</a></p>` : ''}
         <p><strong>arXiv ID: </strong>${paper.id || ''}</p>
         <p><strong>Date: </strong>${formatDate(paper.date)}</p>
         ${paper.rawCategories && paper.rawCategories.length ? `<p><strong>Original arXiv categories: </strong>${paper.rawCategories.join(', ')}</p>` : ''}
         ${paper.comment ? `<p><strong>Comment: </strong>${paper.comment}</p>` : ''}
         ${codeInfoHtml}
       </div>
+
+      ${fulltextSourcesHtml ? `<section class="paper-detail-summary"><h3>免费全文来源</h3>${fulltextSourcesHtml}</section>` : ''}
 
       <section class="paper-detail-summary">
         <h3>一句话结论</h3>

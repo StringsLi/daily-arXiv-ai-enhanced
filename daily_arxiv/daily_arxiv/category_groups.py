@@ -23,6 +23,7 @@ CATEGORY_CODE_MAP = {
         "stat.ML",
         "stat.ME",
         "math.ST",
+        "Machine Learning: Science and Technology",
     },
     "优化控制与系统工程": {
         "cs.SY",
@@ -37,6 +38,8 @@ CATEGORY_CODE_MAP = {
         "q-fin.MF",
         "q-fin.RM",
         "q-fin.ST",
+        "Entropy",
+        "Frontiers in Applied Mathematics and Statistics",
     },
     "动力系统与微分方程": {
         "math.AP",
@@ -45,6 +48,11 @@ CATEGORY_CODE_MAP = {
         "nlin.AO",
         "nlin.CD",
         "nlin.SI",
+        "Chaos: An Interdisciplinary Journal of Nonlinear Science",
+        "Physica D: Nonlinear Phenomena",
+        "SIAM Journal on Applied Dynamical Systems",
+        "Nonlinear Dynamics",
+        "Communications Physics",
     },
     "数值计算与科学计算": {
         "cs.CE",

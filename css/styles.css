@@ -1526,6 +1526,28 @@ footer {
   font-weight: 600;
 }
 
+.fulltext-source-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fulltext-source-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--primary-color);
+  text-decoration: none;
+  border: 1px solid var(--border-accent);
+  border-radius: 14px;
+  padding: 4px 10px;
+  font-size: 13px;
+  background-color: rgba(102, 126, 234, 0.05);
+}
+
+.fulltext-source-link:hover {
+  background-color: rgba(102, 126, 234, 0.12);
+}
+
 .original-abstract {
   font-style: italic;
   border-left: 3px solid var(--border-color);

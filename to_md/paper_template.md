@@ -3,6 +3,14 @@
 
 Main category: {cate}
 
+Source: {source}
+
+Journal: {journal}
+
+DOI: {doi}
+
+Free full text: {free_fulltext}
+
 TL;DR: {tldr}
 
 Research problem: {research_problem}

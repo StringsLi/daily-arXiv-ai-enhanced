@@ -20,17 +20,25 @@ CATEGORY_ALIASES = {
     "stat.ML": "机器学习与数据科学",
     "stat.ME": "机器学习与数据科学",
     "math.ST": "机器学习与数据科学",
+    "Machine Learning: Science and Technology": "机器学习与数据科学",
     "cs.SY": "优化控制与系统工程",
     "eess.SY": "优化控制与系统工程",
     "eess.SP": "优化控制与系统工程",
     "math.OC": "优化控制与系统工程",
     "math.PR": "概率论与随机过程",
     "stat.TH": "概率论与随机过程",
+    "Entropy": "概率论与随机过程",
+    "Frontiers in Applied Mathematics and Statistics": "概率论与随机过程",
     "math.AP": "动力系统与微分方程",
     "math.DS": "动力系统与微分方程",
     "nlin.AO": "动力系统与微分方程",
     "nlin.CD": "动力系统与微分方程",
     "nlin.SI": "动力系统与微分方程",
+    "Chaos: An Interdisciplinary Journal of Nonlinear Science": "动力系统与微分方程",
+    "Physica D: Nonlinear Phenomena": "动力系统与微分方程",
+    "SIAM Journal on Applied Dynamical Systems": "动力系统与微分方程",
+    "Nonlinear Dynamics": "动力系统与微分方程",
+    "Communications Physics": "动力系统与微分方程",
     "cs.CE": "数值计算与科学计算",
     "cs.MS": "数值计算与科学计算",
     "cs.NA": "数值计算与科学计算",
@@ -58,6 +66,19 @@ def normalize_category(categories):
         if category in CATEGORY_ALIASES:
             return CATEGORY_ALIASES[category]
     return CATEGORY_ORDER[-1]
+
+
+def format_free_fulltext(sources):
+    if not isinstance(sources, list) or not sources:
+        return ""
+    parts = []
+    for source in sources:
+        provider = source.get("provider", "source")
+        kind = source.get("kind", "link")
+        url = source.get("url", "")
+        if url:
+            parts.append(f"[{provider} {kind}]({url})")
+    return ", ".join(parts)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -108,6 +129,10 @@ if __name__ == "__main__":
                         summary=item["summary"],
                         translated_summary=first_text(ai_data.get('translated_summary'), item.get('summary')),
                         url=item['abs'],
+                        source=first_text(item.get('source'), item.get('source_type')),
+                        journal=first_text(item.get('journal')),
+                        doi=first_text(item.get('doi')),
+                        free_fulltext=format_free_fulltext(item.get('free_fulltext_sources')),
                         tldr=first_text(ai_data.get('tldr'), ai_data.get('translated_summary'), item.get('summary')),
                         research_problem=first_text(ai_data.get('research_problem')),
                         key_innovation=first_text(ai_data.get('key_innovation')),
