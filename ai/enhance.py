@@ -487,13 +487,21 @@ def main():
     # 保存结果
     written_count = 0
     valid_ai_count = 0
+    skipped_invalid_ai_count = 0
+    chinese_output = is_chinese_language(language)
     with open(target_file, "w", encoding="utf-8") as f:
         for item in processed_data:
-            if item is not None:
-                f.write(json.dumps(item, ensure_ascii=False) + "\n")
-                written_count += 1
-                if has_chinese_ai_content(item, language):
-                    valid_ai_count += 1
+            if item is None:
+                continue
+            has_valid_ai = has_chinese_ai_content(item, language)
+            if chinese_output and not has_valid_ai:
+                skipped_invalid_ai_count += 1
+                continue
+
+            f.write(json.dumps(item, ensure_ascii=False) + "\n")
+            written_count += 1
+            if has_valid_ai:
+                valid_ai_count += 1
 
     if data and written_count == 0:
         raise RuntimeError(
@@ -507,7 +515,8 @@ def main():
         )
 
     print(
-        f"Wrote {written_count} AI-enhanced records to {target_file}; valid AI records: {valid_ai_count}",
+        f"Wrote {written_count} AI-enhanced records to {target_file}; "
+        f"valid AI records: {valid_ai_count}; skipped invalid AI records: {skipped_invalid_ai_count}",
         file=sys.stderr,
     )
 
