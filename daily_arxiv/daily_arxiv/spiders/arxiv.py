@@ -14,6 +14,12 @@ from daily_arxiv.journal_sources import (
     journal_lookup,
     published_date_from_crossref,
 )
+from daily_arxiv.research_focus import (
+    DEFAULT_ARXIV_CATEGORIES,
+    DEFAULT_SUPPLEMENTAL_ARXIV_QUERIES,
+    build_arxiv_api_urls,
+    split_env_list,
+)
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -35,19 +41,32 @@ def _env_int(name: str, default: int) -> int:
 
 class ArxivSpider(scrapy.Spider):
     name = "arxiv"
-    allowed_domains = ["arxiv.org", "api.crossref.org", "doaj.org"]
+    allowed_domains = ["arxiv.org", "export.arxiv.org", "api.crossref.org", "doaj.org"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        categories = os.environ.get("CATEGORIES", "math.DS,math.PR,math.OC,math.NA,math.AP,cs.LG,stat.ML,physics.data-an,nlin.CD,nlin.AO,nlin.SI,physics.comp-ph,cs.SY,eess.SY,q-fin.ST,q-fin.RM,q-fin.MF,q-bio.QM")
-        self.target_categories = {category.strip() for category in categories.split(",") if category.strip()}
+        configured_categories = split_env_list(os.environ.get("CATEGORIES"))
+        additional_categories = split_env_list(os.environ.get("ADDITIONAL_ARXIV_CATEGORIES"))
+        categories = [
+            *DEFAULT_ARXIV_CATEGORIES,
+            *configured_categories,
+            *additional_categories,
+        ]
+        self.target_categories = {category.strip() for category in categories if category.strip()}
         self.start_urls = [f"https://arxiv.org/list/{cat}/new" for cat in self.target_categories]
 
         self.enable_journal_sources = _env_bool("ENABLE_JOURNAL_SOURCES", True)
         self.journal_limit = _env_int("JOURNAL_SOURCE_LIMIT", 20)
         self.journal_lookback_days = _env_int("JOURNAL_LOOKBACK_DAYS", 365)
+        self.enable_supplemental_arxiv_queries = _env_bool("ENABLE_SUPPLEMENTAL_ARXIV_QUERIES", True)
+        self.supplemental_query_limit = _env_int("SUPPLEMENTAL_ARXIV_QUERY_LIMIT", 10)
+        self.supplemental_queries = (
+            split_env_list(os.environ.get("SUPPLEMENTAL_ARXIV_QUERIES"))
+            or DEFAULT_SUPPLEMENTAL_ARXIV_QUERIES
+        )
         self.max_papers = _env_int("MAX_PAPERS", 0)
         self.yielded_papers = 0
+        self.seen_arxiv_ids = set()
 
     def should_yield_paper(self) -> bool:
         if self.max_papers <= 0:
@@ -56,9 +75,24 @@ class ArxivSpider(scrapy.Spider):
             return False
         self.yielded_papers += 1
         return True
+
     def start_requests(self):
         for url in self.start_urls:
             yield scrapy.Request(url, callback=self.parse)
+
+        if self.enable_supplemental_arxiv_queries:
+            self.logger.info(
+                "Supplemental arXiv queries enabled: %s queries; per-query limit=%s",
+                len(self.supplemental_queries),
+                self.supplemental_query_limit,
+            )
+            for query, url in build_arxiv_api_urls(self.supplemental_queries, self.supplemental_query_limit):
+                yield scrapy.Request(
+                    url,
+                    callback=self.parse_arxiv_api,
+                    cb_kwargs={"query": query},
+                    dont_filter=True,
+                )
 
         if not self.enable_journal_sources:
             return
@@ -117,15 +151,10 @@ class ArxivSpider(scrapy.Spider):
                 categories_in_paper = re.findall(r"\(([^)]+)\)", subjects_text)
                 paper_categories = set(categories_in_paper)
                 if paper_categories.intersection(self.target_categories):
-                    if not self.should_yield_paper():
-                        return
-                    yield {
-                        "id": arxiv_id,
-                        "source": "arxiv",
-                        "source_type": "preprint",
-                        "categories": list(paper_categories),
-                    }
-                    self.logger.info("Found arXiv paper %s with categories %s", arxiv_id, paper_categories)
+                    item = self.build_arxiv_item(arxiv_id, list(paper_categories), "category list")
+                    if item:
+                        yield item
+                        self.logger.info("Found arXiv paper %s with categories %s", arxiv_id, paper_categories)
                 else:
                     self.logger.debug(
                         "Skipped arXiv paper %s with categories %s (target %s)",
@@ -135,14 +164,40 @@ class ArxivSpider(scrapy.Spider):
                     )
             else:
                 self.logger.warning("Could not extract categories for arXiv paper %s; including anyway", arxiv_id)
-                if not self.should_yield_paper():
-                    return
-                yield {
-                    "id": arxiv_id,
-                    "source": "arxiv",
-                    "source_type": "preprint",
-                    "categories": [],
-                }
+                item = self.build_arxiv_item(arxiv_id, [], "category list")
+                if item:
+                    yield item
+
+    def parse_arxiv_api(self, response, query: str):
+        for entry in response.xpath("//*[local-name()='entry']"):
+            id_url = entry.xpath("*[local-name()='id']/text()").get()
+            if not id_url:
+                continue
+            arxiv_id = id_url.rstrip("/").split("/abs/")[-1]
+            categories = entry.xpath("*[local-name()='category']/@term").getall()
+            title = clean_text(entry.xpath("*[local-name()='title']/text()").get())
+            summary = clean_text(entry.xpath("*[local-name()='summary']/text()").get())
+            if not is_relevant_topic(title, summary, categories):
+                self.logger.debug("Skipped arXiv API paper outside target topic: %s", title)
+                continue
+            item = self.build_arxiv_item(arxiv_id, categories, f"supplemental query: {query}")
+            if item:
+                yield item
+
+    def build_arxiv_item(self, arxiv_id: str, categories: list[str], reason: str):
+        arxiv_id = arxiv_id.strip()
+        if not arxiv_id or arxiv_id in self.seen_arxiv_ids:
+            return None
+        if not self.should_yield_paper():
+            return None
+        self.seen_arxiv_ids.add(arxiv_id)
+        return {
+            "id": arxiv_id,
+            "source": "arxiv",
+            "source_type": "preprint",
+            "categories": categories,
+            "collection_reason": reason,
+        }
 
     def parse_crossref(self, response, expected_journal: str):
         try:

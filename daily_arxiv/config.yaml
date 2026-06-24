@@ -6,6 +6,15 @@ arxiv:
     - math.NA
     - math.AP
     - cs.SY
+    - cs.LG
+    - stat.ML
+    - stat.ME
+    - physics.data-an
+    - physics.comp-ph
+    - nlin.AO
+    - nlin.CD
+    - nlin.SI
+    - q-bio.QM
 
 llm:
   model_name: 'glm-5.2'

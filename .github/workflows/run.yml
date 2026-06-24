@@ -47,6 +47,10 @@ jobs:
         export TOKEN_GITHUB=${{ secrets.TOKEN_GITHUB }}
         export LANGUAGE="${{ vars.LANGUAGE || 'Chinese' }}"
         export CATEGORIES="${{ vars.CATEGORIES || 'math.DS,math.PR,math.OC,math.NA,math.AP,cs.LG,stat.ML,physics.data-an,nlin.CD,nlin.AO,nlin.SI,physics.comp-ph,cs.SY,eess.SY,q-fin.ST,q-fin.RM,q-fin.MF,q-bio.QM' }}"
+        export ADDITIONAL_ARXIV_CATEGORIES="${{ vars.ADDITIONAL_ARXIV_CATEGORIES }}"
+        export ENABLE_SUPPLEMENTAL_ARXIV_QUERIES="${{ vars.ENABLE_SUPPLEMENTAL_ARXIV_QUERIES }}"
+        export SUPPLEMENTAL_ARXIV_QUERY_LIMIT="${{ vars.SUPPLEMENTAL_ARXIV_QUERY_LIMIT }}"
+        export SUPPLEMENTAL_ARXIV_QUERIES="${{ vars.SUPPLEMENTAL_ARXIV_QUERIES }}"
         export MODEL_NAME="${{ vars.MODEL_NAME || 'deepseek-chat' }}"
         export ENABLE_JOURNAL_SOURCES="${{ vars.ENABLE_JOURNAL_SOURCES }}"
         export JOURNAL_SOURCE_LIMIT="${{ vars.JOURNAL_SOURCE_LIMIT || '20' }}"
