@@ -126,7 +126,7 @@ jobs:
         export MODEL_NAME="${{ vars.MODEL_NAME || 'deepseek-chat' }}"
         export ANTHROPIC_MODEL="${{ vars.ANTHROPIC_MODEL || vars.MODEL_NAME || 'glm-5.2' }}"
         
-        python enhance.py --data ../data/${today}.jsonl
+        python enhance.py --data ../data/${today}.jsonl --max_workers "${{ vars.AI_MAX_WORKERS || '4' }}"
         
         # 检查AI处理是否成功 / Check if AI processing was successful
         if [ $? -ne 0 ]; then
