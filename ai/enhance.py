@@ -61,6 +61,27 @@ def compact_sentence(text: str, max_chars: int = 60) -> str:
     return text if len(text) <= max_chars else text[: max_chars - 3].rstrip() + "..."
 
 
+def has_chinese_ai_content(item: Dict, language: str) -> bool:
+    """Return True only when the record has real translated Chinese AI content."""
+    if not is_chinese_language(language):
+        return bool(item.get("AI", {}).get("translated_summary", "").strip())
+
+    ai_data = item.get("AI", {}) if isinstance(item.get("AI", {}), dict) else {}
+    translated_summary = ai_data.get("translated_summary", "")
+    if not translated_summary.strip() or not has_cjk(translated_summary):
+        return False
+
+    core_fields = (
+        "tldr",
+        "research_problem",
+        "key_innovation",
+        "motivation",
+        "method",
+        "result",
+        "conclusion",
+    )
+    return any(has_cjk(ai_data.get(field, "")) for field in core_fields)
+
 def normalize_ai_fields(item: Dict, language: str, default_ai_fields: Dict) -> Dict:
     ai_data = item.get("AI", {}) if isinstance(item.get("AI", {}), dict) else {}
     ai_data = {**default_ai_fields, **ai_data}
@@ -97,7 +118,10 @@ def normalize_ai_fields(item: Dict, language: str, default_ai_fields: Dict) -> D
                 tldr = candidate
                 break
         else:
-            tldr = compact_sentence(source_summary, 60 if chinese_output else 120)
+            tldr = "" if chinese_output else compact_sentence(source_summary, 120)
+
+    if chinese_output and tldr and not has_cjk(tldr):
+        tldr = ""
 
     ai_data["tldr"] = compact_sentence(tldr, 60 if chinese_output else 120)
     return ai_data
@@ -330,18 +354,30 @@ def main():
     
     # 保存结果
     written_count = 0
+    valid_ai_count = 0
     with open(target_file, "w", encoding="utf-8") as f:
         for item in processed_data:
             if item is not None:
                 f.write(json.dumps(item, ensure_ascii=False) + "\n")
                 written_count += 1
+                if has_chinese_ai_content(item, language):
+                    valid_ai_count += 1
 
     if data and written_count == 0:
         raise RuntimeError(
             f"AI enhancement produced 0 records from {len(data)} input records; refusing to write an empty dataset"
         )
 
-    print(f"Wrote {written_count} AI-enhanced records to {target_file}", file=sys.stderr)
+    if data and is_chinese_language(language) and valid_ai_count == 0:
+        raise RuntimeError(
+            "AI enhancement produced no valid Chinese translations. "
+            "Check OPENAI_BASE_URL, OPENAI_API_KEY, and MODEL_NAME; refusing to publish empty AI fields."
+        )
+
+    print(
+        f"Wrote {written_count} AI-enhanced records to {target_file}; valid AI records: {valid_ai_count}",
+        file=sys.stderr,
+    )
 
 if __name__ == "__main__":
     main()
