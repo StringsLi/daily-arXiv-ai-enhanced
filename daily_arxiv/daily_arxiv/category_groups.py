@@ -65,8 +65,6 @@ CATEGORY_KEYWORDS = {
     SDE_IDENTIFICATION: (
         "data-driven discovery of stochastic differential equations",
         "stochastic differential equation discovery",
-        "stochastic differential equations",
-        "stochastic differential equation",
         "sparse identification stochastic",
         "sindy stochastic",
         "stochastic equation discovery",
@@ -74,9 +72,6 @@ CATEGORY_KEYWORDS = {
         "sde identification",
         "identify sde",
         "identified sde",
-        "diffusion process",
-        "langevin",
-        "fokker-planck",
     ),
     EFFECTIVE_MODELING: (
         "data-driven effective modeling",
@@ -135,7 +130,9 @@ DATA_KEYWORDS = (
     "machine learning",
     "deep learning",
     "learning-based",
-    "neural",
+    "neural network",
+    "neural networks",
+    "deep neural",
     "physics-informed",
     "operator learning",
     "koopman",
@@ -143,8 +140,6 @@ DATA_KEYWORDS = (
     "sparse identification",
     "discovery",
     "identification",
-    "inference",
-    "estimation",
 )
 
 STOCHASTIC_KEYWORDS = (
@@ -165,6 +160,26 @@ STOCHASTIC_KEYWORDS = (
     "first passage time",
     "rare event",
     "tipping point",
+)
+
+DYNAMICS_KEYWORDS = (
+    "dynamical",
+    "dynamics",
+    "differential equation",
+    "differential equations",
+    " sde",
+    "sdes",
+    "bsde",
+    "bsdes",
+    "stochastic differential",
+    "diffusion process",
+    "langevin",
+    "fokker-planck",
+    "markov process",
+    "multiscale stochastic",
+    "tipping point",
+    "escape probability",
+    "mean exit time",
 )
 
 APPLICATION_KEYWORDS = (
@@ -248,12 +263,13 @@ def is_relevant_topic(title: str = "", summary: str = "", categories: object = N
 
     has_data_signal = _has_any(text, DATA_KEYWORDS)
     has_stochastic_signal = _has_any(text, STOCHASTIC_KEYWORDS)
+    has_dynamics_signal = _has_any(text, DYNAMICS_KEYWORDS)
     has_application_signal = _has_any(text, APPLICATION_KEYWORDS)
 
-    if has_data_signal and has_stochastic_signal:
+    if has_data_signal and has_stochastic_signal and has_dynamics_signal:
         return True
 
-    return has_application_signal and has_stochastic_signal and has_data_signal
+    return has_application_signal and has_data_signal and has_stochastic_signal and has_dynamics_signal
 
 
 def classify_paper(categories: object, title: str = "", summary: str = "") -> str:
