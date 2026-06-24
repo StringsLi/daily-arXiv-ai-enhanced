@@ -27,6 +27,11 @@ if os.path.exists('.env'):
 template = open("template.txt", "r").read()
 system = open("system.txt", "r").read()
 
+
+class FatalAIProviderError(RuntimeError):
+    pass
+
+
 def parse_args():
     """解析命令行参数"""
     parser = argparse.ArgumentParser()
@@ -202,7 +207,15 @@ class AnthropicJSONChain:
             "Authorization": f"Bearer {self.api_key}",
             "anthropic-version": "2023-06-01",
         }
-        response = requests.post(self.endpoint, headers=headers, json=payload, timeout=120)
+        try:
+            response = requests.post(self.endpoint, headers=headers, json=payload, timeout=45)
+        except requests.RequestException as e:
+            raise FatalAIProviderError(f"Anthropic-compatible API request failed: {e}") from e
+
+        if response.status_code in {401, 403, 404}:
+            raise FatalAIProviderError(
+                f"Anthropic-compatible API configuration error {response.status_code}: {response.text[:500]}"
+            )
         if response.status_code >= 400:
             raise RuntimeError(f"Anthropic-compatible API error {response.status_code}: {response.text[:500]}")
 
@@ -321,6 +334,8 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
             "content": item['summary']
         })
         item['AI'] = response.model_dump()
+    except FatalAIProviderError:
+        raise
     except langchain_core.exceptions.OutputParserException as e:
         # 尝试从错误信息中提取 JSON 字符串并修复
         error_msg = str(e)
@@ -409,6 +424,10 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
             try:
                 result = future.result()
                 processed_data[idx] = result
+            except FatalAIProviderError as e:
+                for pending in future_to_idx:
+                    pending.cancel()
+                raise RuntimeError(str(e)) from e
             except Exception as e:
                 print(f"Item at index {idx} generated an exception: {e}", file=sys.stderr)
                 processed_data[idx] = data[idx]
