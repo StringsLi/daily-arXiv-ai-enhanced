@@ -266,8 +266,27 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
             return None
     return item
 
+
+def normalize_openai_base_url() -> str:
+    base_url = (os.environ.get("OPENAI_BASE_URL") or "").strip()
+    if not base_url:
+        return ""
+
+    normalized = base_url.rstrip("/")
+    suffix = "/chat/completions"
+    if normalized.lower().endswith(suffix):
+        normalized = normalized[: -len(suffix)].rstrip("/")
+        os.environ["OPENAI_BASE_URL"] = normalized
+        print(
+            "Normalized OPENAI_BASE_URL by removing trailing /chat/completions",
+            file=sys.stderr,
+        )
+
+    return normalized
+
 def process_all_items(data: List[Dict], model_name: str, language: str, max_workers: int) -> List[Dict]:
     """并行处理所有数据项"""
+    normalize_openai_base_url()
     llm = ChatOpenAI(model=model_name).with_structured_output(Structure, method="function_calling")
     print('Connect to:', model_name, file=sys.stderr)
     
