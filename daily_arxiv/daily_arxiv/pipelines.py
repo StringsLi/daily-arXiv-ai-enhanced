@@ -6,11 +6,12 @@
 
 # useful for handling different item types with a single interface
 import arxiv
+from scrapy.exceptions import DropItem
 import json
 import os
 import sys
 from datetime import datetime, timedelta
-from daily_arxiv.category_groups import classify_paper
+from daily_arxiv.category_groups import classify_paper, is_relevant_topic
 from daily_arxiv.free_fulltext import resolve_free_fulltext
 
 
@@ -36,6 +37,8 @@ class DailyArxivPipeline:
         item["comment"] = paper.comment
         item["summary"] = paper.summary
         item["raw_categories"] = paper.categories
+        if not is_relevant_topic(paper.title, paper.summary, paper.categories):
+            raise DropItem(f"Skipped arXiv paper outside target topic: {paper.title}")
         item["categories"] = [
             classify_paper(paper.categories, paper.title, paper.summary)
         ]
@@ -79,6 +82,8 @@ class DailyArxivPipeline:
         item["summary"] = item.get("summary", "")
         item["comment"] = item.get("comment", "")
         item["raw_categories"] = item.get("raw_categories", [item.get("journal", "")])
+        if not is_relevant_topic(title, item["summary"], item["raw_categories"]):
+            raise DropItem(f"Skipped journal paper outside target topic: {title}")
         item["categories"] = [
             classify_paper(item["raw_categories"], title, item["summary"])
         ]

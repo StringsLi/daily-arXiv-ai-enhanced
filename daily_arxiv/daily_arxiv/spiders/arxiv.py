@@ -4,6 +4,7 @@ import re
 
 import scrapy
 
+from daily_arxiv.category_groups import is_relevant_topic
 from daily_arxiv.journal_sources import (
     TARGET_JOURNAL_NAMES,
     build_crossref_urls,
@@ -38,13 +39,13 @@ class ArxivSpider(scrapy.Spider):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        categories = os.environ.get("CATEGORIES", "cs.CV")
+        categories = os.environ.get("CATEGORIES", "math.DS,math.PR,math.OC,math.NA,math.AP,cs.LG,stat.ML,physics.data-an,nlin.CD,nlin.AO,nlin.SI,physics.comp-ph,cs.SY,eess.SY,q-fin.ST,q-fin.RM,q-fin.MF,q-bio.QM")
         self.target_categories = {category.strip() for category in categories.split(",") if category.strip()}
         self.start_urls = [f"https://arxiv.org/list/{cat}/new" for cat in self.target_categories]
 
         self.enable_journal_sources = _env_bool("ENABLE_JOURNAL_SOURCES", True)
-        self.journal_limit = _env_int("JOURNAL_SOURCE_LIMIT", 5)
-        self.journal_lookback_days = _env_int("JOURNAL_LOOKBACK_DAYS", 14)
+        self.journal_limit = _env_int("JOURNAL_SOURCE_LIMIT", 20)
+        self.journal_lookback_days = _env_int("JOURNAL_LOOKBACK_DAYS", 365)
         self.max_papers = _env_int("MAX_PAPERS", 0)
         self.yielded_papers = 0
 
@@ -167,6 +168,9 @@ class ArxivSpider(scrapy.Spider):
 
             journal_info = journal_lookup(journal) or {"name": journal}
             abstract = clean_text(entry.get("abstract", ""))
+            if not is_relevant_topic(title, abstract, [journal_info["name"]]):
+                self.logger.debug("Skipped Crossref article outside target topic: %s", title)
+                continue
             if not abstract:
                 abstract = f"{title}. Published in {journal_info['name']}."
 
@@ -211,6 +215,10 @@ class ArxivSpider(scrapy.Spider):
             authors = [author for author in authors if author]
             abstracts = bibjson.get("abstract", [])
             abstract = clean_text(abstracts[0] if isinstance(abstracts, list) and abstracts else abstracts)
+            journal_info = journal_lookup(journal) or {"name": journal}
+            if not is_relevant_topic(title, abstract, [journal_info["name"]]):
+                self.logger.debug("Skipped DOAJ article outside target topic: %s", title)
+                continue
             if not abstract:
                 abstract = f"{title}. Published in {journal}."
 
@@ -222,7 +230,6 @@ class ArxivSpider(scrapy.Spider):
                 kind = "pdf" if "pdf" in (link.get("type") or "").lower() or url.lower().endswith(".pdf") else "fulltext"
                 fulltext_sources.append({"provider": "DOAJ", "kind": kind, "url": url})
 
-            journal_info = journal_lookup(journal) or {"name": journal}
             if not self.should_yield_paper():
                 return
             yield {

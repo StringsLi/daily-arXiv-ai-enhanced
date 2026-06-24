@@ -46,11 +46,11 @@ jobs:
         export OPENAI_BASE_URL=${{ secrets.OPENAI_BASE_URL }}
         export TOKEN_GITHUB=${{ secrets.TOKEN_GITHUB }}
         export LANGUAGE="${{ vars.LANGUAGE || 'Chinese' }}"
-        export CATEGORIES="${{ vars.CATEGORIES || 'cs.CV' }}"
+        export CATEGORIES="${{ vars.CATEGORIES || 'math.DS,math.PR,math.OC,math.NA,math.AP,cs.LG,stat.ML,physics.data-an,nlin.CD,nlin.AO,nlin.SI,physics.comp-ph,cs.SY,eess.SY,q-fin.ST,q-fin.RM,q-fin.MF,q-bio.QM' }}"
         export MODEL_NAME="${{ vars.MODEL_NAME || 'deepseek-chat' }}"
         export ENABLE_JOURNAL_SOURCES="${{ vars.ENABLE_JOURNAL_SOURCES }}"
-        export JOURNAL_SOURCE_LIMIT="${{ vars.JOURNAL_SOURCE_LIMIT || '5' }}"
-        export JOURNAL_LOOKBACK_DAYS="${{ vars.JOURNAL_LOOKBACK_DAYS || '14' }}"
+        export JOURNAL_SOURCE_LIMIT="${{ vars.JOURNAL_SOURCE_LIMIT || '20' }}"
+        export JOURNAL_LOOKBACK_DAYS="${{ vars.JOURNAL_LOOKBACK_DAYS || '365' }}"
         export MAX_PAPERS="${{ github.event.inputs.max_papers || vars.MAX_PAPERS || '0' }}"
         echo "MAX_PAPERS=${MAX_PAPERS:-0}"
         # 使用Scrapy爬取

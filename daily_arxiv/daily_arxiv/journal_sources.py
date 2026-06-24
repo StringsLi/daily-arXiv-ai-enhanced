@@ -10,6 +10,11 @@ from urllib.parse import quote, urlencode
 
 TARGET_JOURNALS = [
     {
+        "name": "SIAM Journal on Applied Dynamical Systems",
+        "aliases": ["SIADS"],
+        "publisher": "SIAM",
+    },
+    {
         "name": "Chaos: An Interdisciplinary Journal of Nonlinear Science",
         "aliases": ["Chaos"],
         "publisher": "AIP Publishing",
@@ -20,14 +25,39 @@ TARGET_JOURNALS = [
         "publisher": "Elsevier",
     },
     {
-        "name": "SIAM Journal on Applied Dynamical Systems",
-        "aliases": ["SIADS"],
-        "publisher": "SIAM",
-    },
-    {
         "name": "Nonlinear Dynamics",
         "aliases": [],
         "publisher": "Springer Nature",
+    },
+    {
+        "name": "Proceedings of the Royal Society A: Mathematical, Physical and Engineering Sciences",
+        "aliases": ["Proceedings of the Royal Society A", "Proc. R. Soc. A"],
+        "publisher": "The Royal Society",
+    },
+    {
+        "name": "Philosophical Transactions of the Royal Society A: Mathematical, Physical and Engineering Sciences",
+        "aliases": ["Philosophical Transactions A", "Phil. Trans. R. Soc. A"],
+        "publisher": "The Royal Society",
+    },
+    {
+        "name": "Physical Review E",
+        "aliases": ["Phys. Rev. E", "PRE"],
+        "publisher": "American Physical Society",
+    },
+    {
+        "name": "Journal of Computational Physics",
+        "aliases": ["J. Comput. Phys."],
+        "publisher": "Elsevier",
+    },
+    {
+        "name": "Applied Mathematics and Computation",
+        "aliases": [],
+        "publisher": "Elsevier",
+    },
+    {
+        "name": "Communications in Nonlinear Science and Numerical Simulation",
+        "aliases": ["CNSNS"],
+        "publisher": "Elsevier",
     },
     {
         "name": "Machine Learning: Science and Technology",
@@ -41,13 +71,28 @@ TARGET_JOURNALS = [
     },
     {
         "name": "Entropy",
-        "aliases": [],
+        "aliases": ["Entropy (Basel)"],
+        "publisher": "MDPI",
+    },
+    {
+        "name": "Mathematics",
+        "aliases": ["Mathematics (Basel)"],
         "publisher": "MDPI",
     },
     {
         "name": "Frontiers in Applied Mathematics and Statistics",
         "aliases": [],
         "publisher": "Frontiers",
+    },
+    {
+        "name": "Journal of Computational Dynamics",
+        "aliases": [],
+        "publisher": "AIMS Press",
+    },
+    {
+        "name": "AIMS Mathematics",
+        "aliases": [],
+        "publisher": "AIMS Press",
     },
 ]
 
@@ -67,6 +112,12 @@ def normalize_title(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", clean_text(value).lower()).strip()
 
 
+def _journal_name_matches(normalized: str, candidate: str) -> bool:
+    if normalized == candidate:
+        return True
+    return len(candidate) >= 12 and candidate in normalized
+
+
 def is_target_journal(container_title: str) -> bool:
     normalized = normalize_title(container_title)
     if not normalized:
@@ -75,7 +126,7 @@ def is_target_journal(container_title: str) -> bool:
         names = [journal["name"], *journal.get("aliases", [])]
         for name in names:
             candidate = normalize_title(name)
-            if normalized == candidate or candidate in normalized:
+            if _journal_name_matches(normalized, candidate):
                 return True
     return False
 
@@ -86,7 +137,7 @@ def journal_lookup(container_title: str) -> dict | None:
         names = [journal["name"], *journal.get("aliases", [])]
         for name in names:
             candidate = normalize_title(name)
-            if normalized == candidate or candidate in normalized:
+            if _journal_name_matches(normalized, candidate):
                 return journal
     return None
 
