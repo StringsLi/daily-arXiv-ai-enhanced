@@ -1,39 +1,40 @@
 ### [{idx}] [{title}]({url})
 *{authors}*
 
-Main category: {cate}
+主分类: {cate}
 
-Source: {source}
+来源: {source}
 
-Journal: {journal}
+期刊: {journal}
 
 DOI: {doi}
 
-Free full text: {free_fulltext}
+免费全文: {free_fulltext}
 
-TL;DR: {tldr}
+一句话结论: {tldr}
 
-Research problem: {research_problem}
+研究问题: {research_problem}
 
-Key innovation: {key_innovation}
+主要创新点: {key_innovation}
 
 
 <details>
-  <summary>Details</summary>
-Motivation: {motivation}
+  <summary>更多信息</summary>
 
-Method: {method}
+研究动机: {motivation}
 
-Experiments / Validation: {experiments}
+主要方法: {method}
 
-Result: {result}
+实验 / 验证: {experiments}
 
-Conclusion: {conclusion}
+主要结果: {result}
 
-Limitations: {limitations}
+结论: {conclusion}
+
+局限 / 后续问题: {limitations}
 
 中文摘要: {translated_summary}
 
-Original Abstract: {summary}
+英文原始摘要: {summary}
 
 </details>
