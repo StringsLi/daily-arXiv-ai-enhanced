@@ -1,6 +1,7 @@
 import json
 import argparse
 import os
+import re
 from itertools import count
 
 CATEGORY_ORDER = [
@@ -68,6 +69,33 @@ def normalize_category(categories):
     return CATEGORY_ORDER[-1]
 
 
+def same_text(left, right):
+    normalize = lambda value: " ".join(str(value or "").strip().lower().split())
+    return bool(normalize(left)) and normalize(left) == normalize(right)
+
+
+def compact_sentence(text, max_chars=60):
+    text = " ".join(str(text or "").strip().split())
+    if not text:
+        return ""
+    for part in re.split(r"(?<=[。！？!?\.])\s*", text):
+        part = part.strip()
+        if part and len(part) <= max_chars:
+            return part
+    return text if len(text) <= max_chars else text[: max_chars - 1].rstrip() + "…"
+
+
+def display_tldr(ai_data, translated_summary, original_summary):
+    tldr = first_text(ai_data.get("tldr"))
+    if not tldr or same_text(tldr, translated_summary) or same_text(tldr, original_summary) or len(tldr) > 90:
+        tldr = first_text(
+            ai_data.get("conclusion"),
+            ai_data.get("result"),
+            ai_data.get("key_innovation"),
+            ai_data.get("research_problem"),
+        )
+    return compact_sentence(tldr)
+
 def format_free_fulltext(sources):
     if not isinstance(sources, list) or not sources:
         return ""
@@ -127,13 +155,13 @@ if __name__ == "__main__":
                         title=item["title"],
                         authors=",".join(item["authors"]),
                         summary=item["summary"],
-                        translated_summary=first_text(ai_data.get('translated_summary'), item.get('summary')),
+                        translated_summary=first_text(ai_data.get('translated_summary')),
                         url=item['abs'],
                         source=first_text(item.get('source'), item.get('source_type')),
                         journal=first_text(item.get('journal')),
                         doi=first_text(item.get('doi')),
                         free_fulltext=format_free_fulltext(item.get('free_fulltext_sources')),
-                        tldr=first_text(ai_data.get('tldr'), ai_data.get('translated_summary'), item.get('summary')),
+                        tldr=display_tldr(ai_data, first_text(ai_data.get('translated_summary')), item.get('summary')),
                         research_problem=first_text(ai_data.get('research_problem')),
                         key_innovation=first_text(ai_data.get('key_innovation')),
                         motivation=first_text(ai_data.get('motivation')),

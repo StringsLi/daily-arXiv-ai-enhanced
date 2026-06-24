@@ -1484,6 +1484,17 @@ footer {
   font-size: 16px;
 }
 
+.paper-detail-date {
+  margin: 0 0 18px;
+  color: var(--text-color);
+  font-size: 18px;
+}
+
+.paper-tldr-block p {
+  color: var(--text-color);
+  font-size: 20px;
+  line-height: 1.7;
+}
 .paper-info-panel,
 .paper-ai-analysis {
   margin: 18px 0;

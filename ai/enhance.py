@@ -34,6 +34,73 @@ def parse_args():
     parser.add_argument("--max_workers", type=int, default=1, help="Maximum number of parallel workers")
     return parser.parse_args()
 
+
+def is_chinese_language(language: str) -> bool:
+    normalized = (language or "").strip().lower().replace("_", "-")
+    return normalized in {"chinese", "zh", "zh-cn", "simplified chinese", "simplified-chinese", "中文", "简体中文"}
+
+
+def has_cjk(text: str) -> bool:
+    return bool(re.search(r"[\u4e00-\u9fff]", text or ""))
+
+
+def same_content(left: str, right: str) -> bool:
+    normalize = lambda value: re.sub(r"\s+", " ", (value or "").strip()).lower()
+    return bool(normalize(left)) and normalize(left) == normalize(right)
+
+
+def compact_sentence(text: str, max_chars: int = 60) -> str:
+    text = re.sub(r"\s+", " ", (text or "").strip())
+    if not text:
+        return ""
+    parts = re.split(r"(?<=[。！？!?\.])\s*", text)
+    for part in parts:
+        part = part.strip()
+        if part and len(part) <= max_chars:
+            return part
+    return text if len(text) <= max_chars else text[: max_chars - 1].rstrip() + "…"
+
+
+def normalize_ai_fields(item: Dict, language: str, default_ai_fields: Dict) -> Dict:
+    ai_data = item.get("AI", {}) if isinstance(item.get("AI", {}), dict) else {}
+    ai_data = {**default_ai_fields, **ai_data}
+    source_summary = item.get("summary", "")
+    translated_summary = ai_data.get("translated_summary", "")
+    chinese_output = is_chinese_language(language)
+
+    if chinese_output and (
+        not translated_summary.strip()
+        or not has_cjk(translated_summary)
+        or same_content(translated_summary, source_summary)
+    ):
+        translated_summary = ""
+        ai_data["translated_summary"] = ""
+
+    tldr = ai_data.get("tldr", "")
+    tldr_is_invalid = (
+        not tldr.strip()
+        or same_content(tldr, translated_summary)
+        or same_content(tldr, source_summary)
+        or len(tldr.strip()) > 90
+    )
+
+    if chinese_output and tldr.strip() and not has_cjk(tldr):
+        tldr_is_invalid = True
+
+    if tldr_is_invalid:
+        for key in ("conclusion", "result", "key_innovation", "research_problem"):
+            candidate = ai_data.get(key, "")
+            if chinese_output and candidate and not has_cjk(candidate):
+                continue
+            candidate = compact_sentence(candidate, 60 if chinese_output else 120)
+            if candidate and not same_content(candidate, translated_summary):
+                tldr = candidate
+                break
+        else:
+            tldr = ""
+
+    ai_data["tldr"] = compact_sentence(tldr, 60 if chinese_output else 120)
+    return ai_data
 def process_single_item(chain, item: Dict, language: str) -> Dict:
     def is_sensitive(content: str) -> bool:
         """
@@ -120,8 +187,8 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
     """处理单个数据项"""
     # Default structure with meaningful fallback values
     default_ai_fields = {
-        "tldr": item.get("summary", ""),
-        "translated_summary": item.get("summary", ""),
+        "tldr": "",
+        "translated_summary": "",
         "research_problem": "",
         "key_innovation": "",
         "motivation": "",
@@ -162,10 +229,11 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
         print(f"Unexpected error for {item.get('id', 'unknown')}: {e}", file=sys.stderr)
         item['AI'] = default_ai_fields
     
-    # Final validation to ensure all required fields exist
+    # Final validation to ensure all required fields exist and do not show English fallbacks as Chinese.
     for field in default_ai_fields.keys():
         if field not in item['AI']:
             item['AI'][field] = default_ai_fields[field]
+    item['AI'] = normalize_ai_fields(item, language, default_ai_fields)
 
     # 检查 AI 生成的所有字段
     for v in item.get("AI", {}).values():
@@ -209,8 +277,8 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
                 # Add default AI fields to ensure consistency
                 processed_data[idx] = data[idx]
                 processed_data[idx]['AI'] = {
-                    "tldr": data[idx].get("summary", ""),
-                    "translated_summary": data[idx].get("summary", ""),
+                    "tldr": "",
+                    "translated_summary": "",
                     "research_problem": "",
                     "key_innovation": "",
                     "motivation": "",

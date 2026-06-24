@@ -3,8 +3,9 @@ Please analyze the following paper abstract.
 Return all fields in {language}.
 
 Field requirements:
-- translated_summary: a faithful full translation of the original abstract, not a short summary.
-- tldr: one concise sentence with the paper's core takeaway.
+- translated_summary: faithfully translate the full original abstract. If {language} is Chinese, this field must be Simplified Chinese, not English, and must not be a short summary.
+- tldr: one short sentence with the paper's core takeaway. If {language} is Chinese, keep it concise, ideally 20-35 Chinese characters and no more than 60 Chinese characters.
+- tldr must be clearly different from translated_summary; do not copy the abstract translation into tldr.
 - research_problem: the concrete problem or gap the paper addresses.
 - key_innovation: the main new idea, contribution, or technical novelty.
 - motivation, method, experiments, result, conclusion: concise but informative enough for a researcher to scan quickly.

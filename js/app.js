@@ -63,6 +63,33 @@ function firstText(...values) {
   return '';
 }
 
+function hasCjk(text) {
+  return /[\u4e00-\u9fff]/.test(text || '');
+}
+
+function sameText(left, right) {
+  const normalize = value => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  return normalize(left).length > 0 && normalize(left) === normalize(right);
+}
+
+function compactDisplaySentence(text, maxChars = 60) {
+  const normalized = String(text || '').trim().replace(/\s+/g, ' ');
+  if (!normalized) return '';
+  const parts = normalized.split(/(?<=[。！？!?\.])\s*/);
+  const sentence = parts.find(part => part.trim() && part.trim().length <= maxChars);
+  if (sentence) return sentence.trim();
+  return normalized.length <= maxChars ? normalized : `${normalized.slice(0, maxChars - 1).trim()}…`;
+}
+
+function makeDisplayTldr(tldr, translatedSummary, originalSummary, aiData = {}) {
+  const tooLong = value => String(value || '').trim().length > 90;
+  let value = firstText(tldr);
+  const invalid = !value || tooLong(value) || sameText(value, translatedSummary) || sameText(value, originalSummary);
+  if (invalid) {
+    value = firstText(aiData.conclusion, aiData.result, aiData.key_innovation, aiData.research_problem);
+  }
+  return compactDisplaySentence(value, 60);
+}
 const AI_ANALYSIS_FIELDS = [
   { key: 'researchProblem', jsonKey: 'research_problem', label: '研究问题' },
   { key: 'keyInnovation', jsonKey: 'key_innovation', label: '主要创新点' },
@@ -1034,8 +1061,8 @@ function parseJsonlData(jsonlText, date) {
       }
 
       const aiData = paper.AI && typeof paper.AI === 'object' ? paper.AI : {};
-      const translatedSummary = firstText(aiData.translated_summary, paper.translated_summary, paper.summary);
-      const tldr = firstText(aiData.tldr, translatedSummary, paper.summary);
+      const translatedSummary = firstText(aiData.translated_summary, paper.translated_summary);
+      const tldr = makeDisplayTldr(aiData.tldr, translatedSummary, paper.summary, aiData);
       const researchProblem = firstText(aiData.research_problem, aiData.motivation);
       const keyInnovation = firstText(aiData.key_innovation, aiData.conclusion);
       const paperUrl = firstText(
@@ -1661,7 +1688,11 @@ function showPaperDetails(paper, paperIndex) {
   const highlightedSummary = highlightIfNeeded(paper.summary, modalTitleTerms);
   const highlightedAbstract = highlightIfNeeded(paper.details || '', modalTitleTerms);
   const highlightedOriginalAbstract = highlightIfNeeded(paper.originalSummary || '', modalTitleTerms);
-  const analysisSections = getAnalysisSections(paper, modalTitleTerms);
+  const detailSectionKeys = ['keyInnovation', 'method', 'result', 'conclusion'];
+  const analysisSections = AI_ANALYSIS_FIELDS
+    .filter(field => detailSectionKeys.includes(field.key))
+    .map(field => [field.label, highlightIfNeeded(paper[field.key], modalTitleTerms)])
+    .filter(([, value]) => value && String(value).trim().length > 0);
   const matchedPaperClass = paper.isMatched ? 'matched-paper-details' : '';
 
   const paperInfoRows = [
@@ -1722,25 +1753,26 @@ function showPaperDetails(paper, paperIndex) {
 
   const modalContent = `
     <div class="paper-details ${matchedPaperClass}">
+      ${paper.date ? `<p class="paper-detail-date"><strong>Date:</strong> ${formatDate(paper.date)}</p>` : ''}
+
+      <section class="paper-detail-summary paper-tldr-block">
+        <h3>TL;DR</h3>
+        <p>${highlightedSummary}</p>
+      </section>
+
+      ${analysisHtml ? `<section class="paper-ai-analysis">${analysisHtml}</section>` : ''}
+      ${highlightedAbstract ? `<section class="paper-detail-summary"><h3>Abstract</h3><p class="translated-abstract">${highlightedAbstract}</p></section>` : ''}
+      ${highlightedOriginalAbstract ? `<details class="original-abstract-block"><summary>英文原始摘要</summary><p class="original-abstract">${highlightedOriginalAbstract}</p></details>` : ''}
+      ${fulltextSourcesHtml ? `<section class="paper-detail-summary"><h3>免费全文来源</h3>${fulltextSourcesHtml}</section>` : ''}
+
       <section class="paper-info-panel">
         <h3>论文信息</h3>
         <div class="paper-detail-meta">${paperInfoHtml}</div>
       </section>
 
-      ${fulltextSourcesHtml ? `<section class="paper-detail-summary"><h3>免费全文来源</h3>${fulltextSourcesHtml}</section>` : ''}
-
-      <section class="paper-detail-summary">
-        <h3>一句话结论</h3>
-        <p>${highlightedSummary}</p>
-      </section>
-
-      ${analysisHtml ? `<section class="paper-ai-analysis"><h3>AI 中文解读</h3>${analysisHtml}</section>` : ''}
-      ${highlightedAbstract ? `<section class="paper-detail-summary"><h3>中文摘要</h3><p class="translated-abstract">${highlightedAbstract}</p></section>` : ''}
-      ${highlightedOriginalAbstract ? `<details class="original-abstract-block"><summary>英文原始摘要</summary><p class="original-abstract">${highlightedOriginalAbstract}</p></details>` : ''}
       ${pdfPreviewHtml}
     </div>
   `;
-
   document.getElementById('modalBody').innerHTML = modalContent;
   paperLink.href = urls.abs || '#';
   pdfLink.href = urls.pdf || '#';
