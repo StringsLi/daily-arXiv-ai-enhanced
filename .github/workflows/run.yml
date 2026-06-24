@@ -120,8 +120,11 @@ jobs:
         cd ai
         export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
         export OPENAI_BASE_URL=${{ secrets.OPENAI_BASE_URL }}
+        export ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+        export ANTHROPIC_BASE_URL=${{ secrets.ANTHROPIC_BASE_URL }}
         export LANGUAGE="${{ vars.LANGUAGE || 'Chinese' }}"
         export MODEL_NAME="${{ vars.MODEL_NAME || 'deepseek-chat' }}"
+        export ANTHROPIC_MODEL="${{ vars.ANTHROPIC_MODEL || vars.MODEL_NAME || 'glm-5.2' }}"
         
         python enhance.py --data ../data/${today}.jsonl
         

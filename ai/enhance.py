@@ -3,7 +3,7 @@ import json
 import sys
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Dict
+from typing import List, Dict, Any
 from queue import Queue
 from threading import Lock
 # INSERT_YOUR_CODE
@@ -125,6 +125,97 @@ def normalize_ai_fields(item: Dict, language: str, default_ai_fields: Dict) -> D
 
     ai_data["tldr"] = compact_sentence(tldr, 60 if chinese_output else 120)
     return ai_data
+
+
+def parse_json_object(text: str) -> Dict[str, Any]:
+    cleaned = (text or "").strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start >= 0 and end > start:
+            return json.loads(cleaned[start : end + 1])
+        raise
+
+
+def normalize_anthropic_base_url() -> str:
+    base_url = (os.environ.get("ANTHROPIC_BASE_URL") or "").strip().rstrip("/")
+    if not base_url:
+        return ""
+
+    lowered = base_url.lower()
+    if lowered.endswith("/v1/messages") or lowered.endswith("/messages"):
+        return base_url
+    if lowered.endswith("/v1"):
+        return f"{base_url}/messages"
+    return f"{base_url}/v1/messages"
+
+
+class AnthropicJSONChain:
+    def __init__(self, model_name: str):
+        self.model_name = model_name
+        self.api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+        self.endpoint = normalize_anthropic_base_url()
+        if not self.api_key or not self.endpoint:
+            raise RuntimeError("ANTHROPIC_API_KEY and ANTHROPIC_BASE_URL are required for Anthropic-compatible mode")
+
+    def invoke(self, inputs: Dict[str, str]) -> Structure:
+        language = inputs["language"]
+        content = inputs["content"]
+        field_names = [
+            "tldr",
+            "translated_summary",
+            "research_problem",
+            "key_innovation",
+            "motivation",
+            "method",
+            "experiments",
+            "result",
+            "conclusion",
+            "limitations",
+        ]
+        json_instruction = (
+            "\n\nReturn only one valid JSON object. Do not wrap it in markdown. "
+            f"The JSON keys must be exactly: {', '.join(field_names)}. "
+            "Every value must be a string."
+        )
+        payload = {
+            "model": self.model_name,
+            "max_tokens": 2048,
+            "temperature": 0.2,
+            "system": system.format(language=language),
+            "messages": [
+                {
+                    "role": "user",
+                    "content": template.format(language=language, content=content) + json_instruction,
+                }
+            ],
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.api_key}",
+            "anthropic-version": "2023-06-01",
+        }
+        response = requests.post(self.endpoint, headers=headers, json=payload, timeout=120)
+        if response.status_code >= 400:
+            raise RuntimeError(f"Anthropic-compatible API error {response.status_code}: {response.text[:500]}")
+
+        data = response.json()
+        text_parts = []
+        for block in data.get("content", []):
+            if isinstance(block, dict) and block.get("type") == "text":
+                text_parts.append(block.get("text", ""))
+        if not text_parts and isinstance(data.get("completion"), str):
+            text_parts.append(data["completion"])
+
+        parsed = parse_json_object("\n".join(text_parts))
+        return Structure(**parsed)
 
 def process_single_item(chain, item: Dict, language: str) -> Dict:
     def is_sensitive(content: str) -> bool:
@@ -285,28 +376,30 @@ def normalize_openai_base_url() -> str:
     return normalized
 
 def process_all_items(data: List[Dict], model_name: str, language: str, max_workers: int) -> List[Dict]:
-    """并行处理所有数据项"""
-    normalize_openai_base_url()
-    llm = ChatOpenAI(model=model_name).with_structured_output(Structure, method="function_calling")
-    print('Connect to:', model_name, file=sys.stderr)
-    
-    prompt_template = ChatPromptTemplate.from_messages([
-        SystemMessagePromptTemplate.from_template(system),
-        HumanMessagePromptTemplate.from_template(template=template)
-    ])
+    """Process all data items, using Anthropic-compatible mode when configured."""
+    use_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY") and os.environ.get("ANTHROPIC_BASE_URL"))
+    if use_anthropic:
+        chain = AnthropicJSONChain(model_name)
+        print('Connect to Anthropic-compatible:', model_name, file=sys.stderr)
+    else:
+        normalize_openai_base_url()
+        llm = ChatOpenAI(model=model_name).with_structured_output(Structure, method="function_calling")
+        print('Connect to OpenAI-compatible:', model_name, file=sys.stderr)
 
-    chain = prompt_template | llm
-    
-    # 使用线程池并行处理
-    processed_data = [None] * len(data)  # 预分配结果列表
+        prompt_template = ChatPromptTemplate.from_messages([
+            SystemMessagePromptTemplate.from_template(system),
+            HumanMessagePromptTemplate.from_template(template=template)
+        ])
+
+        chain = prompt_template | llm
+
+    processed_data = [None] * len(data)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # 提交所有任务
         future_to_idx = {
             executor.submit(process_single_item, chain, item, language): idx
             for idx, item in enumerate(data)
         }
-        
-        # 使用tqdm显示进度
+
         for future in tqdm(
             as_completed(future_to_idx),
             total=len(data),
@@ -318,7 +411,6 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
                 processed_data[idx] = result
             except Exception as e:
                 print(f"Item at index {idx} generated an exception: {e}", file=sys.stderr)
-                # Add default AI fields to ensure consistency
                 processed_data[idx] = data[idx]
                 processed_data[idx]['AI'] = {
                     "tldr": "",
@@ -332,12 +424,12 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
                     "conclusion": "",
                     "limitations": ""
                 }
-    
+
     return processed_data
 
 def main():
     args = parse_args()
-    model_name = os.environ.get("MODEL_NAME", 'deepseek-chat')
+    model_name = os.environ.get("ANTHROPIC_MODEL") or os.environ.get("MODEL_NAME", 'deepseek-chat')
     language = os.environ.get("LANGUAGE") or 'Chinese'
 
     # 检查并删除目标文件
@@ -390,7 +482,7 @@ def main():
     if data and is_chinese_language(language) and valid_ai_count == 0:
         raise RuntimeError(
             "AI enhancement produced no valid Chinese translations. "
-            "Check OPENAI_BASE_URL, OPENAI_API_KEY, and MODEL_NAME; refusing to publish empty AI fields."
+            "Check ANTHROPIC_API_KEY/ANTHROPIC_BASE_URL/ANTHROPIC_MODEL or OPENAI_BASE_URL/OPENAI_API_KEY/MODEL_NAME; refusing to publish empty AI fields."
         )
 
     print(
