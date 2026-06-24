@@ -208,9 +208,9 @@ class AnthropicJSONChain:
             "anthropic-version": "2023-06-01",
         }
         try:
-            response = requests.post(self.endpoint, headers=headers, json=payload, timeout=45)
+            response = requests.post(self.endpoint, headers=headers, json=payload, timeout=90)
         except requests.RequestException as e:
-            raise FatalAIProviderError(f"Anthropic-compatible API request failed: {e}") from e
+            raise RuntimeError(f"Anthropic-compatible API request failed: {e}") from e
 
         if response.status_code in {401, 403, 404}:
             raise FatalAIProviderError(
@@ -228,7 +228,9 @@ class AnthropicJSONChain:
             text_parts.append(data["completion"])
 
         parsed = parse_json_object("\n".join(text_parts))
-        return Structure(**parsed)
+        normalized = {field: "" for field in field_names}
+        normalized.update({key: str(value) if value is not None else "" for key, value in parsed.items()})
+        return Structure(**normalized)
 
 def process_single_item(chain, item: Dict, language: str) -> Dict:
     def is_sensitive(content: str) -> bool:
