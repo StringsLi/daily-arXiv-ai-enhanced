@@ -11,7 +11,7 @@ on:
       max_papers:
         description: "Maximum papers to crawl/process for this run; use 0 for no limit"
         required: false
-        default: "50"
+        default: "0"
 jobs:
   build:
     permissions:
