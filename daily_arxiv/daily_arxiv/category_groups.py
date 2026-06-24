@@ -67,9 +67,9 @@ CATEGORY_KEYWORDS = {
         "stochastic differential equation discovery",
         "stochastic differential equations",
         "stochastic differential equation",
-        "sparse identification",
-        "sindy",
-        "equation discovery",
+        "sparse identification stochastic",
+        "sindy stochastic",
+        "stochastic equation discovery",
         "sde discovery",
         "sde identification",
         "identify sde",
@@ -80,60 +80,56 @@ CATEGORY_KEYWORDS = {
     ),
     EFFECTIVE_MODELING: (
         "data-driven effective modeling",
-        "effective modeling",
-        "reduced-order modeling",
-        "reduced order modeling",
-        "model reduction",
+        "effective modeling multiscale stochastic",
+        "reduced-order stochastic",
+        "reduced order stochastic",
+        "stochastic model reduction",
         "multiscale stochastic",
-        "multiscale dynamics",
-        "koopman operator",
-        "koopman",
-        "operator learning",
-        "physics-informed neural networks",
-        "physics-informed",
+        "koopman operator stochastic",
+        "koopman stochastic",
+        "operator learning stochastic",
+        "physics-informed neural networks stochastic",
+        "physics-informed stochastic",
         "neural sde",
         "neural stochastic differential",
-        "surrogate model",
-        "surrogate modeling",
+        "stochastic surrogate model",
+        "stochastic surrogate modeling",
     ),
     PREDICTION_WARNING: (
         "data-driven tipping point",
-        "tipping point",
-        "tipping points",
-        "early warning",
-        "critical transition",
+        "stochastic tipping point",
+        "tipping point stochastic",
+        "early warning stochastic",
+        "critical transition stochastic",
         "escape probability",
         "mean exit time",
         "first passage time",
         "rare event",
-        "transition path",
+        "transition path stochastic",
         "stochastic stability",
         "stochastic systems prediction",
         "forecasting stochastic",
         "predicting stochastic",
     ),
     APPLICATIONS: (
-        "power systems",
-        "power system",
-        "electric power",
-        "smart grid",
+        "power systems stochastic",
+        "power system stochastic",
+        "electric power stochastic",
+        "smart grid stochastic",
         "financial stochastic",
-        "finance",
-        "financial",
+        "finance stochastic",
         "biological stochastic",
-        "biological",
-        "biochemical",
+        "biochemical stochastic",
         "climate stochastic",
-        "climate",
-        "fault diagnosis",
-        "engineering",
-        "energy system",
-        "epidemic",
-        "neuroscience",
+        "fault diagnosis stochastic",
+        "engineering stochastic",
+        "energy system stochastic",
+        "epidemic stochastic",
+        "neuroscience stochastic",
     ),
 }
 
-GENERAL_DATA_KEYWORDS = (
+DATA_KEYWORDS = (
     "data-driven",
     "data driven",
     "machine learning",
@@ -151,31 +147,50 @@ GENERAL_DATA_KEYWORDS = (
     "estimation",
 )
 
-GENERAL_STOCHASTIC_DYNAMICS_KEYWORDS = (
+STOCHASTIC_KEYWORDS = (
     "stochastic",
     "random dynamical",
-    "dynamical system",
-    "dynamical systems",
-    "dynamics",
     "stochastic differential",
     " sde",
     "sdes",
     "diffusion process",
+    "diffusion model",
     "langevin",
     "fokker-planck",
     "markov",
-    "multiscale",
-    "tipping point",
+    "noise-induced",
+    "uncertainty quantification",
     "escape probability",
     "mean exit time",
+    "first passage time",
+    "rare event",
+    "tipping point",
 )
 
-TOPIC_PHRASES = tuple(
+APPLICATION_KEYWORDS = (
+    "power systems",
+    "power system",
+    "electric power",
+    "smart grid",
+    "financial",
+    "finance",
+    "biological",
+    "biochemical",
+    "climate",
+    "fault diagnosis",
+    "engineering",
+    "energy system",
+    "epidemic",
+    "neuroscience",
+)
+
+STRONG_TOPIC_PHRASES = tuple(
     sorted(
         {
             phrase
-            for phrases in CATEGORY_KEYWORDS.values()
+            for group, phrases in CATEGORY_KEYWORDS.items()
             for phrase in phrases
+            if group != APPLICATIONS
         }
         | {
             "data-driven stochastic dynamical systems",
@@ -185,6 +200,8 @@ TOPIC_PHRASES = tuple(
             "data-driven discovery of stochastic differential equations",
             "sparse identification stochastic dynamical systems",
             "koopman operator stochastic dynamics",
+            "physics-informed neural networks stochastic dynamical systems",
+            "neural sde dynamical systems",
         },
         key=len,
         reverse=True,
@@ -215,6 +232,10 @@ def _contains(text: str, phrase: str) -> bool:
     return phrase in text
 
 
+def _has_any(text: str, phrases: tuple[str, ...]) -> bool:
+    return any(_contains(text, phrase) for phrase in phrases)
+
+
 def is_relevant_topic(title: str = "", summary: str = "", categories: object = None) -> bool:
     """Return True for papers in the requested data-driven stochastic dynamics scope."""
 
@@ -222,12 +243,17 @@ def is_relevant_topic(title: str = "", summary: str = "", categories: object = N
     if not text:
         return False
 
-    if any(_contains(text, phrase) for phrase in TOPIC_PHRASES):
+    if _has_any(text, STRONG_TOPIC_PHRASES):
         return True
 
-    has_data_signal = any(_contains(text, phrase) for phrase in GENERAL_DATA_KEYWORDS)
-    has_dynamics_signal = any(_contains(text, phrase) for phrase in GENERAL_STOCHASTIC_DYNAMICS_KEYWORDS)
-    return has_data_signal and has_dynamics_signal
+    has_data_signal = _has_any(text, DATA_KEYWORDS)
+    has_stochastic_signal = _has_any(text, STOCHASTIC_KEYWORDS)
+    has_application_signal = _has_any(text, APPLICATION_KEYWORDS)
+
+    if has_data_signal and has_stochastic_signal:
+        return True
+
+    return has_application_signal and has_stochastic_signal and has_data_signal
 
 
 def classify_paper(categories: object, title: str = "", summary: str = "") -> str:
@@ -249,6 +275,10 @@ def classify_paper(categories: object, title: str = "", summary: str = "") -> st
         for keyword in keywords:
             if _contains(text, keyword):
                 scores[group] += 3
+
+    for application_keyword in APPLICATION_KEYWORDS:
+        if _contains(text, application_keyword):
+            scores[APPLICATIONS] += 2
 
     for group, codes in CATEGORY_CODE_MAP.items():
         if any(category in codes for category in raw_categories):
