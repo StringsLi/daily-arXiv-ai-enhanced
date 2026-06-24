@@ -37,7 +37,7 @@ def parse_args():
 
 def is_chinese_language(language: str) -> bool:
     normalized = (language or "").strip().lower().replace("_", "-")
-    return normalized in {"chinese", "zh", "zh-cn", "simplified chinese", "simplified-chinese", "中文", "简体中文"}
+    return normalized in {"chinese", "zh", "zh-cn", "simplified chinese", "simplified-chinese", "\u4e2d\u6587", "\u7b80\u4f53\u4e2d\u6587"}
 
 
 def has_cjk(text: str) -> bool:
@@ -53,12 +53,12 @@ def compact_sentence(text: str, max_chars: int = 60) -> str:
     text = re.sub(r"\s+", " ", (text or "").strip())
     if not text:
         return ""
-    parts = re.split(r"(?<=[。！？!?\.])\s*", text)
+    parts = re.split(r"(?<=[\u3002\uff01\uff1f.!?])\s*", text)
     for part in parts:
         part = part.strip()
         if part and len(part) <= max_chars:
             return part
-    return text if len(text) <= max_chars else text[: max_chars - 1].rstrip() + "…"
+    return text if len(text) <= max_chars else text[: max_chars - 3].rstrip() + "..."
 
 
 def normalize_ai_fields(item: Dict, language: str, default_ai_fields: Dict) -> Dict:
@@ -97,10 +97,11 @@ def normalize_ai_fields(item: Dict, language: str, default_ai_fields: Dict) -> D
                 tldr = candidate
                 break
         else:
-            tldr = ""
+            tldr = compact_sentence(source_summary, 60 if chinese_output else 120)
 
     ai_data["tldr"] = compact_sentence(tldr, 60 if chinese_output else 120)
     return ai_data
+
 def process_single_item(chain, item: Dict, language: str) -> Dict:
     def is_sensitive(content: str) -> bool:
         """
@@ -294,7 +295,7 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
 def main():
     args = parse_args()
     model_name = os.environ.get("MODEL_NAME", 'deepseek-chat')
-    language = os.environ.get("LANGUAGE", 'Chinese')
+    language = os.environ.get("LANGUAGE") or 'Chinese'
 
     # 检查并删除目标文件
     target_file = args.data.replace('.jsonl', f'_AI_enhanced_{language}.jsonl')

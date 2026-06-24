@@ -78,11 +78,11 @@ def compact_sentence(text, max_chars=60):
     text = " ".join(str(text or "").strip().split())
     if not text:
         return ""
-    for part in re.split(r"(?<=[。！？!?\.])\s*", text):
+    for part in re.split(r"(?<=[\u3002\uff01\uff1f.!?])\s*", text):
         part = part.strip()
         if part and len(part) <= max_chars:
             return part
-    return text if len(text) <= max_chars else text[: max_chars - 1].rstrip() + "…"
+    return text if len(text) <= max_chars else text[: max_chars - 3].rstrip() + "..."
 
 
 def display_tldr(ai_data, translated_summary, original_summary):
@@ -94,6 +94,8 @@ def display_tldr(ai_data, translated_summary, original_summary):
             ai_data.get("key_innovation"),
             ai_data.get("research_problem"),
         )
+    if not tldr:
+        tldr = original_summary
     return compact_sentence(tldr)
 
 def format_free_fulltext(sources):

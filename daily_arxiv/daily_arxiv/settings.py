@@ -1,3 +1,5 @@
+import os
+
 # Scrapy settings for daily_arxiv project
 #
 # For simplicity, this file contains only settings considered important or
@@ -25,7 +27,8 @@ ROBOTSTXT_OBEY = True
 # Keep external journal endpoints from holding the daily workflow open forever.
 DOWNLOAD_TIMEOUT = 30
 RETRY_TIMES = 1
-CLOSESPIDER_TIMEOUT = 600
+CLOSESPIDER_TIMEOUT = int(os.environ.get("CLOSESPIDER_TIMEOUT", "600") or 600)
+CLOSESPIDER_ITEMCOUNT = int(os.environ.get("MAX_PAPERS", "0") or 0)
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay

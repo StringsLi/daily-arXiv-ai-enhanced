@@ -45,7 +45,16 @@ class ArxivSpider(scrapy.Spider):
         self.enable_journal_sources = _env_bool("ENABLE_JOURNAL_SOURCES", True)
         self.journal_limit = _env_int("JOURNAL_SOURCE_LIMIT", 5)
         self.journal_lookback_days = _env_int("JOURNAL_LOOKBACK_DAYS", 14)
+        self.max_papers = _env_int("MAX_PAPERS", 0)
+        self.yielded_papers = 0
 
+    def should_yield_paper(self) -> bool:
+        if self.max_papers <= 0:
+            return True
+        if self.yielded_papers >= self.max_papers:
+            return False
+        self.yielded_papers += 1
+        return True
     def start_requests(self):
         for url in self.start_urls:
             yield scrapy.Request(url, callback=self.parse)
@@ -107,6 +116,8 @@ class ArxivSpider(scrapy.Spider):
                 categories_in_paper = re.findall(r"\(([^)]+)\)", subjects_text)
                 paper_categories = set(categories_in_paper)
                 if paper_categories.intersection(self.target_categories):
+                    if not self.should_yield_paper():
+                        return
                     yield {
                         "id": arxiv_id,
                         "source": "arxiv",
@@ -123,6 +134,8 @@ class ArxivSpider(scrapy.Spider):
                     )
             else:
                 self.logger.warning("Could not extract categories for arXiv paper %s; including anyway", arxiv_id)
+                if not self.should_yield_paper():
+                    return
                 yield {
                     "id": arxiv_id,
                     "source": "arxiv",
@@ -157,6 +170,8 @@ class ArxivSpider(scrapy.Spider):
             if not abstract:
                 abstract = f"{title}. Published in {journal_info['name']}."
 
+            if not self.should_yield_paper():
+                return
             yield {
                 "id": f"doi:{doi.lower()}" if doi else f"journal:{re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')[:80]}",
                 "source": "crossref",
@@ -208,6 +223,8 @@ class ArxivSpider(scrapy.Spider):
                 fulltext_sources.append({"provider": "DOAJ", "kind": kind, "url": url})
 
             journal_info = journal_lookup(journal) or {"name": journal}
+            if not self.should_yield_paper():
+                return
             yield {
                 "id": f"doi:{doi.lower()}" if doi else f"doaj:{result.get('id', title)}",
                 "source": "doaj",
