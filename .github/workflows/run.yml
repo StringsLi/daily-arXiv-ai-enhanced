@@ -56,13 +56,13 @@ jobs:
         export JOURNAL_SOURCE_LIMIT="${{ vars.JOURNAL_SOURCE_LIMIT || '20' }}"
         export JOURNAL_LOOKBACK_DAYS="${{ vars.JOURNAL_LOOKBACK_DAYS || '365' }}"
         export MAX_PAPERS="${{ github.event.inputs.max_papers || vars.MAX_PAPERS || '0' }}"
-        export CRAWL_TIMEOUT_SECONDS="${{ vars.CRAWL_TIMEOUT_SECONDS || '900' }}"
+        export CRAWL_TIMEOUT_SECONDS="${{ vars.CRAWL_TIMEOUT_SECONDS || '2400' }}"
         echo "MAX_PAPERS=${MAX_PAPERS:-0}"
-        echo "CRAWL_TIMEOUT_SECONDS=${CRAWL_TIMEOUT_SECONDS:-900}"
+        echo "CRAWL_TIMEOUT_SECONDS=${CRAWL_TIMEOUT_SECONDS:-2400}"
         # 使用Scrapy爬取
         # Use Scrapy to crawl
         set +e
-        timeout "${CRAWL_TIMEOUT_SECONDS:-900}" scrapy crawl arxiv -o ../data/${today}.jsonl
+        timeout "${CRAWL_TIMEOUT_SECONDS:-2400}" scrapy crawl arxiv -o ../data/${today}.jsonl
         crawl_exit_code=$?
         set -e
 

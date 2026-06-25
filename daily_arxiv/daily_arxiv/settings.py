@@ -23,11 +23,12 @@ ROBOTSTXT_OBEY = True
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 # CONCURRENT_REQUESTS = 32
+CONCURRENT_REQUESTS_PER_DOMAIN = 2
 
 # Keep external journal endpoints from holding the daily workflow open forever.
-DOWNLOAD_TIMEOUT = 30
-RETRY_TIMES = 1
-CLOSESPIDER_TIMEOUT = int(os.environ.get("CLOSESPIDER_TIMEOUT", "600") or 600)
+DOWNLOAD_TIMEOUT = int(os.environ.get("DOWNLOAD_TIMEOUT", "90") or 90)
+RETRY_TIMES = int(os.environ.get("RETRY_TIMES", "2") or 2)
+CLOSESPIDER_TIMEOUT = int(os.environ.get("CLOSESPIDER_TIMEOUT", "1800") or 1800)
 CLOSESPIDER_ITEMCOUNT = int(os.environ.get("MAX_PAPERS", "0") or 0)
 
 # Configure a delay for requests for the same website (default: 0)

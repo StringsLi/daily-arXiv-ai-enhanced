@@ -60,6 +60,7 @@ class ArxivSpider(scrapy.Spider):
         self.journal_lookback_days = _env_int("JOURNAL_LOOKBACK_DAYS", 365)
         self.enable_supplemental_arxiv_queries = _env_bool("ENABLE_SUPPLEMENTAL_ARXIV_QUERIES", True)
         self.supplemental_query_limit = _env_int("SUPPLEMENTAL_ARXIV_QUERY_LIMIT", 30)
+        self.supplemental_download_timeout = _env_int("SUPPLEMENTAL_ARXIV_DOWNLOAD_TIMEOUT", 120)
         self.supplemental_queries = (
             split_env_list(os.environ.get("SUPPLEMENTAL_ARXIV_QUERIES"))
             or DEFAULT_SUPPLEMENTAL_ARXIV_QUERIES
@@ -77,9 +78,6 @@ class ArxivSpider(scrapy.Spider):
         return True
 
     def start_requests(self):
-        for url in self.start_urls:
-            yield scrapy.Request(url, callback=self.parse)
-
         if self.enable_supplemental_arxiv_queries:
             self.logger.info(
                 "Supplemental arXiv queries enabled: %s queries; per-query limit=%s",
@@ -92,8 +90,15 @@ class ArxivSpider(scrapy.Spider):
                     callback=self.parse_arxiv_api,
                     cb_kwargs={"query": query},
                     dont_filter=True,
-                    meta={"dont_obey_robotstxt": True},
+                    priority=30,
+                    meta={
+                        "dont_obey_robotstxt": True,
+                        "download_timeout": self.supplemental_download_timeout,
+                    },
                 )
+
+        for url in self.start_urls:
+            yield scrapy.Request(url, callback=self.parse, priority=20)
 
         if not self.enable_journal_sources:
             return
@@ -110,6 +115,7 @@ class ArxivSpider(scrapy.Spider):
                 callback=self.parse_crossref,
                 cb_kwargs={"expected_journal": journal},
                 dont_filter=True,
+                priority=0,
             )
         for journal, url in build_doaj_urls(self.journal_limit):
             yield scrapy.Request(
@@ -117,6 +123,7 @@ class ArxivSpider(scrapy.Spider):
                 callback=self.parse_doaj,
                 cb_kwargs={"expected_journal": journal},
                 dont_filter=True,
+                priority=0,
             )
 
     def parse(self, response):
