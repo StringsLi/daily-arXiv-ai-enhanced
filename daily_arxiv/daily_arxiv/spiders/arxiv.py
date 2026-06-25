@@ -59,7 +59,7 @@ class ArxivSpider(scrapy.Spider):
         self.journal_limit = _env_int("JOURNAL_SOURCE_LIMIT", 20)
         self.journal_lookback_days = _env_int("JOURNAL_LOOKBACK_DAYS", 365)
         self.enable_supplemental_arxiv_queries = _env_bool("ENABLE_SUPPLEMENTAL_ARXIV_QUERIES", True)
-        self.supplemental_query_limit = _env_int("SUPPLEMENTAL_ARXIV_QUERY_LIMIT", 10)
+        self.supplemental_query_limit = _env_int("SUPPLEMENTAL_ARXIV_QUERY_LIMIT", 30)
         self.supplemental_queries = (
             split_env_list(os.environ.get("SUPPLEMENTAL_ARXIV_QUERIES"))
             or DEFAULT_SUPPLEMENTAL_ARXIV_QUERIES
@@ -92,6 +92,7 @@ class ArxivSpider(scrapy.Spider):
                     callback=self.parse_arxiv_api,
                     cb_kwargs={"query": query},
                     dont_filter=True,
+                    meta={"dont_obey_robotstxt": True},
                 )
 
         if not self.enable_journal_sources:
@@ -170,8 +171,10 @@ class ArxivSpider(scrapy.Spider):
 
     def parse_arxiv_api(self, response, query: str):
         for entry in response.xpath("//*[local-name()='entry']"):
+            self.crawler.stats.inc_value("supplemental_arxiv/candidates")
             id_url = entry.xpath("*[local-name()='id']/text()").get()
             if not id_url:
+                self.crawler.stats.inc_value("supplemental_arxiv/skipped_missing_id")
                 continue
             arxiv_id = id_url.rstrip("/").split("/abs/")[-1]
             categories = entry.xpath("*[local-name()='category']/@term").getall()
@@ -179,9 +182,11 @@ class ArxivSpider(scrapy.Spider):
             summary = clean_text(entry.xpath("*[local-name()='summary']/text()").get())
             if not is_relevant_topic(title, summary, categories):
                 self.logger.debug("Skipped arXiv API paper outside target topic: %s", title)
+                self.crawler.stats.inc_value("supplemental_arxiv/skipped_topic")
                 continue
             item = self.build_arxiv_item(arxiv_id, categories, f"supplemental query: {query}")
             if item:
+                self.crawler.stats.inc_value("supplemental_arxiv/accepted")
                 yield item
 
     def build_arxiv_item(self, arxiv_id: str, categories: list[str], reason: str):

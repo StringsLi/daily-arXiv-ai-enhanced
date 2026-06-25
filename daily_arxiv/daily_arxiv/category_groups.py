@@ -288,10 +288,17 @@ def is_relevant_topic(title: str = "", summary: str = "", categories: object = N
     has_dynamics_signal = _has_any(text, DYNAMICS_KEYWORDS)
     has_application_signal = _has_any(text, APPLICATION_KEYWORDS)
 
-    if has_data_signal and has_stochastic_signal and has_dynamics_signal:
+    if has_data_signal and has_dynamics_signal:
         return True
 
-    return has_application_signal and has_data_signal and has_stochastic_signal and has_dynamics_signal
+    if has_stochastic_signal and has_dynamics_signal:
+        return True
+
+    return has_application_signal and (
+        (has_data_signal and has_dynamics_signal)
+        or (has_stochastic_signal and has_dynamics_signal)
+        or (has_data_signal and has_stochastic_signal)
+    )
 
 
 def classify_paper(categories: object, title: str = "", summary: str = "") -> str:
