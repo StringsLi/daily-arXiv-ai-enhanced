@@ -17,4 +17,4 @@ arxiv:
     - q-bio.QM
 
 llm:
-  model_name: 'glm-5.2'
+  model_name: 'glm-4.7-flash'

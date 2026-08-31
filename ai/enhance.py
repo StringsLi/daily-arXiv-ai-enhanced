@@ -393,8 +393,12 @@ def normalize_openai_base_url() -> str:
     return normalized
 
 def process_all_items(data: List[Dict], model_name: str, language: str, max_workers: int) -> List[Dict]:
-    """Process all data items, using Anthropic-compatible mode when configured."""
-    use_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY") and os.environ.get("ANTHROPIC_BASE_URL"))
+    """Process all data items with the configured AI provider."""
+    provider = (os.environ.get("AI_PROVIDER") or "").strip().lower()
+    use_anthropic = (
+        provider in {"", "anthropic"}
+        and bool(os.environ.get("ANTHROPIC_API_KEY") and os.environ.get("ANTHROPIC_BASE_URL"))
+    )
     if use_anthropic:
         chain = AnthropicJSONChain(model_name)
         print('Connect to Anthropic-compatible:', model_name, file=sys.stderr)
@@ -450,7 +454,11 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
 
 def main():
     args = parse_args()
-    model_name = os.environ.get("ANTHROPIC_MODEL") or os.environ.get("MODEL_NAME", 'deepseek-chat')
+    provider = (os.environ.get("AI_PROVIDER") or "").strip().lower()
+    if provider in {"", "anthropic"} and os.environ.get("ANTHROPIC_MODEL"):
+        model_name = os.environ["ANTHROPIC_MODEL"]
+    else:
+        model_name = os.environ.get("MODEL_NAME", 'glm-4.7-flash')
     language = os.environ.get("LANGUAGE") or 'Chinese'
 
     # 检查并删除目标文件

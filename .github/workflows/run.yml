@@ -51,7 +51,7 @@ jobs:
         export ENABLE_SUPPLEMENTAL_ARXIV_QUERIES="${{ vars.ENABLE_SUPPLEMENTAL_ARXIV_QUERIES }}"
         export SUPPLEMENTAL_ARXIV_QUERY_LIMIT="${{ vars.SUPPLEMENTAL_ARXIV_QUERY_LIMIT }}"
         export SUPPLEMENTAL_ARXIV_QUERIES="${{ vars.SUPPLEMENTAL_ARXIV_QUERIES }}"
-        export MODEL_NAME="${{ vars.MODEL_NAME || 'deepseek-chat' }}"
+        export MODEL_NAME="${{ vars.MODEL_NAME || 'glm-4.7-flash' }}"
         export ENABLE_JOURNAL_SOURCES="${{ vars.ENABLE_JOURNAL_SOURCES }}"
         export JOURNAL_SOURCE_LIMIT="${{ vars.JOURNAL_SOURCE_LIMIT || '20' }}"
         export JOURNAL_LOOKBACK_DAYS="${{ vars.JOURNAL_LOOKBACK_DAYS || '365' }}"
@@ -139,8 +139,9 @@ jobs:
         export ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
         export ANTHROPIC_BASE_URL=${{ secrets.ANTHROPIC_BASE_URL }}
         export LANGUAGE="${{ vars.LANGUAGE || 'Chinese' }}"
-        export MODEL_NAME="${{ vars.MODEL_NAME || 'deepseek-chat' }}"
-        export ANTHROPIC_MODEL="${{ vars.ANTHROPIC_MODEL || vars.MODEL_NAME || 'glm-5.2' }}"
+        export MODEL_NAME="${{ vars.MODEL_NAME || 'glm-4.7-flash' }}"
+        export AI_PROVIDER="${{ vars.AI_PROVIDER || 'custom' }}"
+        export ANTHROPIC_MODEL="${{ vars.ANTHROPIC_MODEL || '' }}"
         
         python enhance.py --data ../data/${today}.jsonl --max_workers "${{ vars.AI_MAX_WORKERS || '4' }}"
         
